@@ -2,13 +2,13 @@ import unittest
 import os
 import shutil
 import torch
-from bin.src.data.experiments import DnaToFloatExperiment
-from bin.src.learner.raytune_learner import TuneModel
-from bin.tests.test_model.dnatofloat_model import ModelSimple
-from bin.src.learner.raytune_learner import TuneWrapper 
-from bin.src.utils.yaml_model_schema import YamlRayConfigLoader
+from src.stimulus.data.experiments import DnaToFloatExperiment
+from src.stimulus.learner.raytune_learner import TuneModel
+from tests.test_model.dnatofloat_model import ModelSimple
+from src.stimulus.learner.raytune_learner import TuneWrapper 
+from src.stimulus.utils.yaml_model_schema import YamlRayConfigLoader
 from torch.utils.data import DataLoader
-from bin.src.data.handlertorch import TorchDataset
+from src.stimulus.data.handlertorch import TorchDataset
 
 
 class TestTuneWrapper(unittest.TestCase):

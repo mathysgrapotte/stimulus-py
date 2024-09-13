@@ -13,7 +13,7 @@ To write test cases for a new noise generator class:
 
 import unittest
 import numpy as np
-from bin.src.data.splitters.splitters import RandomSplitter
+from src.stimulus.data.splitters.splitters import RandomSplitter
 import polars as pl
 
 def sample_data():
