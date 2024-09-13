@@ -1,5 +1,5 @@
 import unittest
-from bin.src.utils.performance import Performance
+from src.stimulus.utils.performance import Performance
 
 class TestPerformance(unittest.TestCase):
     def setUp(self):

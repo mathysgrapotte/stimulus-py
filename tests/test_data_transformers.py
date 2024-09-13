@@ -21,7 +21,7 @@ class TestMyNoiseGenerator(unittest.TestCase):
 
 import unittest
 import numpy as np
-from bin.src.data.transform.data_transformation_generators import UniformTextMasker, GaussianNoise, ReverseComplement, GaussianChunk
+from src.stimulus.data.transform.data_transformation_generators import UniformTextMasker, GaussianNoise, ReverseComplement, GaussianChunk
 
 
 class TestUniformTextMasker(unittest.TestCase):

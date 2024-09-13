@@ -3,8 +3,8 @@ import unittest
 import os
 import torch
 from typing import Any, Tuple, Union, Literal
-from bin.src.data.handlertorch import TorchDataset
-from bin.src.data.experiments import DnaToFloatExperiment, ProtDnaToFloatExperiment, TitanicExperiment
+from src.stimulus.data.handlertorch import TorchDataset
+from src.stimulus.data.experiments import DnaToFloatExperiment, ProtDnaToFloatExperiment, TitanicExperiment
 
 class TestTorchDataset(unittest.TestCase):
 

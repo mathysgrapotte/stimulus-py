@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.testing as npt
 import unittest
-from bin.src.data.experiments import DnaToFloatExperiment
+from src.stimulus.data.experiments import DnaToFloatExperiment
 from copy import deepcopy
 
 class TestDnaToFloatExperiment(unittest.TestCase):
