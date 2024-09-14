@@ -1,128 +1,140 @@
-"""
-unit test cases for the encoders file shold be written like the following
-
-Test case for the TextOneHotEncoder class.
-
-To create a similar test case for another class with a similar structure:
-1. Create a new test case class by subclassing unittest.TestCase.
-2. Add setup code in the setUp method to create an instance of the class being tested.
-3. Write test methods to test the functionality of the class methods.
-4. Use assertions (e.g., self.assertEqual, self.assertIsInstance) to verify the behavior of the class methods.
-5. update the bin/requirements.txt file with the new dependencies neede from the class, if any new is added.
-
-Example:
-
-class TestMyClass(unittest.TestCase):
-    def setUp(self):
-        # Create an instance of the class being tested
-        self.my_class_instance = MyClass()
-
-    def test_method1(self):
-        # Test method 1 of the class
-        result = self.my_class_instance.method1()
-        self.assertEqual(result, expected_result)
-
-    def test_method2(self):
-        # Test method 2 of the class
-        result = self.my_class_instance.method2()
-        self.assertIsInstance(result, expected_type)
-"""
-
+import unittest
 import numpy as np
 import numpy.testing as npt
-import unittest
-from src.stimulus.data.encoding.encoders import TextOneHotEncoder, IntRankEncoder, StrClassificationIntEncoder 
+from abc import ABC, abstractmethod
+from src.stimulus.data.encoding.encoders import TextOneHotEncoder, IntRankEncoder, StrClassificationIntEncoder
 
-
-class TestTextOneHotEncoderDna(unittest.TestCase):
+class TestEncoder(ABC):
+    """Base class for testing encoders."""
 
     def setUp(self):
-        self.text_encoder = TextOneHotEncoder("acgt")
+        if type(self) is TestEncoder:
+            raise NotImplementedError("TestEncoder is a base class and should not be instantiated directly.")
+        self.encoder = None
+        self.input_data = None
+        self.expected_encoded = None
+        self.expected_decoded = None
 
     def test_encode(self):
-        # Test encoding a valid sequence
-        encoded_data = self.text_encoder.encode("ACGT")
-        self.assertIsInstance(encoded_data, np.ndarray)
-        self.assertEqual(encoded_data.shape, (4, 4))  # Expected shape for one-hot encoding of "ACGT"
-        correct_output = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-        npt.assert_array_equal(encoded_data, correct_output, "The encoded matrix is not correct")  # Make sure is elements wise correct
-
-        # Test encoding an empty sequence
-        encoded_data_out_alphabet = self.text_encoder.encode("Bubba")
-        self.assertIsInstance(encoded_data_out_alphabet, np.ndarray)
-        self.assertEqual(encoded_data_out_alphabet.shape, (5, 4))  # Expected shape for one-hot encoding of 5 letter word
-        correct_output_out_alphabet = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]])
-        npt.assert_array_equal(encoded_data_out_alphabet, correct_output_out_alphabet, "The encoded matrix is not correct") # Make sure is elements wise correct
+        """Test encoding of data."""
+        encoded_data = self.encoder.encode(self.input_data)
+        self._assert_encoded(encoded_data, self.expected_encoded)
 
     def test_decode(self):
-        # Test decoding a one-hot encoded sequence
-        encoded_data = self.text_encoder.encode("ACGT")
-        decoded_sequence = self.text_encoder.decode(encoded_data)
-        self.assertIsInstance(decoded_sequence, np.ndarray)
-        self.assertEqual(decoded_sequence.shape, (4, 1))  # Expected shape for the decoded sequence
-        self.assertEqual("".join(decoded_sequence.flatten()), "acgt")  # Expected decoded sequence
+        """Test decoding of data."""
+        decoded_data = self.encoder.decode(self.expected_encoded)
+        self._assert_decoded(decoded_data, self.expected_decoded)
 
-        # Test decoding an empty one-hot encoded sequence
-        encoded_data_out_alphabet = self.text_encoder.encode("Bubba")
-        decoded_sequence_out_alphabet = self.text_encoder.decode(encoded_data_out_alphabet)
-        self.assertIsInstance(decoded_sequence_out_alphabet, np.ndarray)
-        self.assertEqual(decoded_sequence_out_alphabet.size, 5)  # Expected size for the decoded sequence
+    def test_encode_all(self):
+        """Test encoding of multiple data points."""
+        encoded_data = self.encoder.encode_all(self.input_data_list)
+        self._assert_encoded_all(encoded_data, self.expected_encoded_list)
 
-    def test_encode_all_one_element(self):
-        # Test encoding a single sequence
-        encoded_data = self.text_encoder.encode_all(["ACGT"])
-        self.assertIsInstance(encoded_data, np.ndarray)
-        self.assertEqual(encoded_data.shape, (1, 4, 4))
-        correct_output = np.array([[[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]])
-        npt.assert_array_equal(encoded_data, correct_output, "The encoded matrix is not correct")  # Make sure is elements wise correct
+    @abstractmethod
+    def _assert_encoded(self, encoded, expected):
+        pass
 
-    def test_encode_all_same_length(self):
-        # Test encoding a list of sequences
-        sequences = ["ACGT", "ACGT", "ACGT"]
-        encoded_data = self.text_encoder.encode_all(sequences)
-        self.assertIsInstance(encoded_data, np.ndarray)
-        self.assertEqual(len(encoded_data), 3)
-        # check the shapes within the list 
-        for encoded_sequence in encoded_data:
-            self.assertIsInstance(encoded_sequence, np.ndarray)
-            self.assertEqual(encoded_sequence.shape, (4, 4))
+    @abstractmethod
+    def _assert_decoded(self, decoded, expected):
+        pass
 
-    def test_encode_all_variable_length(self):
-        # Test encoding a list of sequences with variable length
-        sequences = ["ACGT", "ACG", "AC"]
-        encoded_data = self.text_encoder.encode_all(sequences)
-        self.assertIsInstance(encoded_data, list)
-        self.assertEqual(len(encoded_data), 3)
-        # check the shapes within the list
-        self.assertEqual(encoded_data[0].shape, (4, 4))
-        self.assertEqual(encoded_data[1].shape, (3, 4))
-        self.assertEqual(encoded_data[2].shape, (2, 4))
+    @abstractmethod
+    def _assert_encoded_all(self, encoded, expected):
+        pass
 
-class TestIntRankEncoder(unittest.TestCase):
+class TestTextOneHotEncoder(TestEncoder, unittest.TestCase):
+    """Test TextOneHotEncoder."""
 
     def setUp(self):
-        self.int_encoder = IntRankEncoder()
+        super().setUp()
+        self.encoder = TextOneHotEncoder("acgt")
+        self.input_data = "ACGT"
+        self.expected_encoded = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+        self.expected_decoded = np.array(['a', 'c', 'g', 't']).reshape(-1, 1)
+        self.input_data_list = ["ACGT", "ACG", "AC"]
+        self.expected_encoded_list = [
+            np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]),
+            np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]]),
+            np.array([[1, 0, 0, 0], [0, 1, 0, 0]])
+        ]
 
-    def test_encode(self):
+    def _assert_encoded(self, encoded, expected):
+        self.assertIsInstance(encoded, np.ndarray)
+        self.assertEqual(encoded.shape, expected.shape)
+        npt.assert_array_equal(encoded, expected)
 
-        # Test encoding a list of integers
-        encoded_data_list = self.int_encoder.encode_all([1, 2, 3])
-        self.assertIsInstance(encoded_data_list, np.ndarray)
-        self.assertEqual(encoded_data_list.shape, (3,))
-        npt.assert_array_equal(encoded_data_list, np.array([0, 0.5, 1]), "The encoded list is not correct")
+    def _assert_decoded(self, decoded, expected):
+        self.assertIsInstance(decoded, np.ndarray)
+        self.assertEqual(decoded.shape, expected.shape)
+        npt.assert_array_equal(decoded, expected)
 
-class TestStrClassificationIntEncoder(unittest.TestCase):
+    def _assert_encoded_all(self, encoded, expected):
+        self.assertIsInstance(encoded, list)
+        self.assertEqual(len(encoded), len(expected))
+        for enc, exp in zip(encoded, expected):
+            self._assert_encoded(enc, exp)
+
+    def test_encode_out_of_alphabet(self):
+        """Test encoding of characters outside the alphabet."""
+        encoded_data = self.encoder.encode("Bubba")
+        expected_output = np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]])
+        self._assert_encoded(encoded_data, expected_output)
+
+class TestIntRankEncoder(TestEncoder, unittest.TestCase):
+    """Test IntRankEncoder."""
 
     def setUp(self):
-        self.str_encoder = StrClassificationIntEncoder()
+        super().setUp()
+        self.encoder = IntRankEncoder()
+        self.input_data = [1, 2, 3]
+        self.expected_encoded = np.array([0, 0.5, 1])
+        self.expected_decoded = np.array([1, 2, 3])
+        self.input_data_list = [[1, 2, 3], [4, 5, 6]]
+        self.expected_encoded_list = [np.array([0, 0.5, 1]), np.array([0, 0.5, 1])]
 
-    def test_encode(self):
+    def _assert_encoded(self, encoded, expected):
+        self.assertIsInstance(encoded, np.ndarray)
+        self.assertEqual(encoded.shape, expected.shape)
+        npt.assert_array_almost_equal(encoded, expected)
 
-        # Test encoding a list of strings
-        encoded_data_list = self.str_encoder.encode_all(["A", "B", "C", "A"])
-        self.assertIsInstance(encoded_data_list, np.ndarray)
-        self.assertEqual(encoded_data_list.shape, (4,))
-        npt.assert_array_equal(encoded_data_list, np.array([0, 1, 2, 0]), "The encoded list is not correct")
+    def _assert_decoded(self, decoded, expected):
+        self.assertIsInstance(decoded, np.ndarray)
+        self.assertEqual(decoded.shape, expected.shape)
+        npt.assert_array_equal(decoded, expected)
+
+    def _assert_encoded_all(self, encoded, expected):
+        self.assertIsInstance(encoded, np.ndarray)
+        self.assertEqual(encoded.shape, (len(self.input_data_list), len(self.input_data_list[0])))
+        for enc, exp in zip(encoded, expected):
+            npt.assert_array_almost_equal(enc, exp)
+
+class TestStrClassificationIntEncoder(TestEncoder, unittest.TestCase):
+    """Test StrClassificationIntEncoder."""
+
+    def setUp(self):
+        super().setUp()
+        self.encoder = StrClassificationIntEncoder()
+        self.input_data = ["A", "B", "C", "A"]
+        self.expected_encoded = np.array([0, 1, 2, 0])
+        self.expected_decoded = np.array(["A", "B", "C", "A"])
+        self.input_data_list = [["A", "B", "C", "A"], ["D", "E", "F"]]
+        self.expected_encoded_list = [np.array([0, 1, 2, 0]), np.array([0, 1, 2])]
+
+    def _assert_encoded(self, encoded, expected):
+        self.assertIsInstance(encoded, np.ndarray)
+        self.assertEqual(encoded.shape, expected.shape)
+        npt.assert_array_equal(encoded, expected)
+
+    def _assert_decoded(self, decoded, expected):
+        self.assertIsInstance(decoded, np.ndarray)
+        self.assertEqual(decoded.shape, expected.shape)
+        npt.assert_array_equal(decoded, expected)
+
+    def _assert_encoded_all(self, encoded, expected):
+        self.assertIsInstance(encoded, np.ndarray)
+        self.assertEqual(encoded.shape, (len(self.input_data_list), len(max(self.input_data_list, key=len))))
+        for enc, exp in zip(encoded, expected):
+            npt.assert_array_equal(enc[:len(exp)], exp)
 
 if __name__ == "__main__":
     unittest.main()
