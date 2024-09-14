@@ -6,12 +6,16 @@ import numpy.testing as npt
 import polars as pl
 
 from src.stimulus.data.csv import CsvProcessing, CsvLoader
+from abc import ABC, abstractmethod
 from src.stimulus.data.experiments import DnaToFloatExperiment, ProtDnaToFloatExperiment
 
-class TestCsvProcessing(unittest.TestCase):
+class TestCsvProcessing(ABC):
     """Base class for testing CsvProcessing."""
 
     def setUp(self):
+        # raising a NotImplementedError to ensure that the subclass has implemented the setUp method.
+        if type(self) is TestCsvProcessing:
+            raise NotImplementedError("TestCsvProcessing is a base class and should not be instantiated directly.")
         self.csv_processing = None
         self.configs = None
         self.data_length = None
@@ -42,7 +46,7 @@ class TestCsvProcessing(unittest.TestCase):
         observed_values = [round(v, 6) if isinstance(v, float) else v for v in observed_values]
         self.assertEqual(observed_values, expected_values)
 
-class TestDnaToFloatCsvProcessing(TestCsvProcessing):
+class TestDnaToFloatCsvProcessing(TestCsvProcessing, unittest.TestCase):
     """Test CsvProcessing for DnaToFloatExperiment."""
 
     def setUp(self):
@@ -92,7 +96,7 @@ class TestProtDnaToFloatCsvProcessing(TestCsvProcessing):
         self._test_column_values('split:split:int', [1, 0, 1, 0])
         self._test_column_values('bonjour:input:prot', ['GPRTTIKAKQLETLX', 'GPRTTIKAKQLETLX', 'GPRTTIKAKQLETLX', 'GPRTTIKAKQLETLX'])
 
-class TestCsvLoader(unittest.TestCase):
+class TestCsvLoader(ABC):
     """Base class for testing CsvLoader."""
 
     def setUp(self):
@@ -149,7 +153,7 @@ class TestCsvLoader(unittest.TestCase):
                 if expected_length > 1: # If the expected length is 0, this will fail as we are trying to find the length of an object size 0.
                     self.assertEqual(len(encoded_item[i][key]), expected_length)
 
-class TestDnaToFloatCsvLoader(TestCsvLoader):
+class TestDnaToFloatCsvLoader(TestCsvLoader, unittest.TestCase):
     """Test CsvLoader for DnaToFloatExperiment."""
 
     def setUp(self):
@@ -161,7 +165,7 @@ class TestDnaToFloatCsvLoader(TestCsvLoader):
         self.data_shape_split = [48, 4]
         self.shape_splits = {0: 16, 1: 16, 2: 16}
 
-class TestProtDnaToFloatCsvLoader(TestCsvLoader):
+class TestProtDnaToFloatCsvLoader(TestCsvLoader, unittest.TestCase):
     """Test CsvLoader for ProtDnaToFloatExperiment."""
 
     def setUp(self):
