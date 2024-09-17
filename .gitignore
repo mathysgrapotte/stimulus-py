@@ -28,7 +28,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-test_env_stimulus/
+test-stimulus-env/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
