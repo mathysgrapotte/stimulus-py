@@ -5,10 +5,10 @@ import os
 import json
 import yaml
 
-from launch_utils import import_class_from_file, get_experiment, memory_split_for_ray_init
-from json_schema import JsonSchema
-from src.learner.raytune_learner import TuneWrapper as StimulusTuneWrapper
-from src.data.csv import CsvProcessing
+from stimulus.utils.launch_utils import import_class_from_file, get_experiment, memory_split_for_ray_init
+from stimulus.json_schema import JsonSchema
+from stimulus.learner.raytune_learner import TuneWrapper as StimulusTuneWrapper
+from stimulus.data.csv import CsvProcessing
 
 
 def get_args():

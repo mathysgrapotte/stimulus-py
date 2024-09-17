@@ -3,8 +3,8 @@
 import argparse
 import json
 
-from launch_utils import get_experiment
-from src.data.csv import CsvProcessing
+from stimulus.utils.launch_utils import get_experiment
+from stimulus.data.csv import CsvProcessing
 
 
 

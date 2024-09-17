@@ -7,11 +7,11 @@ import yaml
 import safetensors
 
 from torch.utils.data import DataLoader
-from launch_utils import import_class_from_file, get_experiment, memory_split_for_ray_init
-from src.learner.raytune_learner import TuneWrapper as StimulusTuneWrapper
-from src.learner.raytune_parser import TuneParser as StimulusTuneParser
-from src.data.handlertorch import TorchDataset
-from src.learner.predict import PredictWrapper
+from stimulus.utils.launch_utils import import_class_from_file, get_experiment, memory_split_for_ray_init
+from stimulus.learner.raytune_learner import TuneWrapper as StimulusTuneWrapper
+from stimulus.learner.raytune_parser import TuneParser as StimulusTuneParser
+from stimulus.data.handlertorch import TorchDataset
+from stimulus.learner.predict import PredictWrapper
 
 
 def get_args():

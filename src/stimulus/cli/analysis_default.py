@@ -6,8 +6,8 @@ import os
 import pandas as pd
 import torch
 
-from launch_utils import import_class_from_file, get_experiment
-from src.analysis.analysis_default import AnalysisPerformanceTune, AnalysisRobustness
+from stimulus.utils.launch_utils import import_class_from_file, get_experiment
+from stimulus.analysis.analysis_default import AnalysisPerformanceTune, AnalysisRobustness
 
 def get_args():
     

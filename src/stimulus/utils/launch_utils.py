@@ -1,6 +1,6 @@
 import importlib.util
 import os
-import src.stimulus.data.experiments as exp
+import stimulus.data.experiments as exp
 import math
 
 from typing import  Union, Tuple

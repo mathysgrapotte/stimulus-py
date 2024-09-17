@@ -8,9 +8,9 @@ import torch
 from torch.utils.data import DataLoader
 from typing import Tuple
 
-from src.data.handlertorch import TorchDataset
-from src.learner.predict import PredictWrapper
-from launch_utils import import_class_from_file, get_experiment
+from stimulus.data.handlertorch import TorchDataset
+from stimulus.learner.predict import PredictWrapper
+from stimulus.utils.launch_utils import import_class_from_file, get_experiment
 
 def get_args():
     

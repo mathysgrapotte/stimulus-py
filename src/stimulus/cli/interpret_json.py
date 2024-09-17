@@ -5,7 +5,7 @@ import json
 import os
 import re
 
-from json_schema import JsonSchema
+from stimulus.utils.json_schema import JsonSchema
 from typing import Union
 
 
