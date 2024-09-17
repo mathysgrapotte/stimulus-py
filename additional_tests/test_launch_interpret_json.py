@@ -1,8 +1,8 @@
 import unittest
-from bin.launch_interpret_json import interpret_json
+from src.stimulus.cli.interpret_json import interpret_json
 
 """ 
-to run this test you need to put a relatibve inmport in the JsonSchema import line in launch_interpret_json.py.
+to run this test you need to put a relative import in the JsonSchema import line in launch_interpret_json.py.
 
 To explain this further launch_interpret_json.py is meant to be launched as it is:
 python3 launch_interpret_json.py 

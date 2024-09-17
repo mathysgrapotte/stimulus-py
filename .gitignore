@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Ignore all __pycache__ directories, including those in subdirectories
+**/__pycache__/
+
 # C extensions
 *.so
 
@@ -25,6 +28,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+test_env_stimulus/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -160,3 +164,16 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# VS Code Local History extension
+.history/
+
+# VS Code Settings Sync extension
+.vscode-sync.json
+
+# VS Code Python extension
+.vscode-python/
