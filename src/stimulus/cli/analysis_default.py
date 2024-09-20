@@ -5,6 +5,7 @@ import json
 import os
 import pandas as pd
 import torch
+from safetensors.torch import load_model as safe_load
 
 from stimulus.utils.launch_utils import import_class_from_file, get_experiment
 from stimulus.analysis.analysis_default import AnalysisPerformanceTune, AnalysisRobustness
@@ -128,10 +129,13 @@ def load_model(model_class: object, weight_path: str, mconfig_path: str) -> obje
 
     # load model
     model = model_class(**mconfig)
-    model.load_state_dict(torch.load(weight_path))
+    model = safe_load(model, weight_path, strict=True)
 
     return model
 
-if __name__ == "__main__":
+def run():
     args = get_args()
     main(args.model, args.weight, args.model_config, args.metrics, args.experiment_config, args.data, args.outdir)
+
+if __name__ == "__main__":
+    run()

@@ -69,9 +69,10 @@ def main(data_csv, config_json, out_path):
     csv_obj.save(out_path)
 
 
-
+def run():
+    args = get_args()
+    main(args.csv, args.json, args.output)
 
 
 if __name__ == "__main__":
-    args = get_args()
-    main(args.csv, args.json, args.output)
+    run()

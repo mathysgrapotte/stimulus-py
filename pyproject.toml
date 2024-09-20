@@ -6,8 +6,8 @@ build-backend = "hatchling.build"
 packages = ["src/stimulus"]
 
 [project]
-name = "stimulus"
-version = "0.0.1"
+name = "stimulus-py"
+version = "0.0.6"
 authors = [
   { name="Mathys Grapotte", email="mathysgrapotte@gmail.com" },
   { name="Alessio Vignoli"},
@@ -24,15 +24,26 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+dependencies = [
+    "numpy>=1.26.0, <2.0.0",
+    "polars-lts-cpu>=0.20.30",
+    "scikit-learn>=1.5.0",
+    "torch>=2.2.2",
+    "ray[train,tune,default]>=2.23.0",
+    "matplotlib>=3.9.0",
+    "pandas>=2.2.0",
+    "safetensors>=0.4.5",
+]
 
 [project.scripts]
-stimulus-shuffle-csv = "stimulus.cli.shuffle_csv:main"
-stimulus-transform-csv = "stimulus.cli.transform_csv:main"
-stimulus-split-csv = "stimulus.cli.split_csv:main"
-stimulus-analysis-default = "stimulus.cli.analysis_default:main"
-stimulus-predict = "stimulus.cli.predict:main"
-
+stimulus-shuffle-csv = "stimulus.cli.shuffle_csv:run"
+stimulus-transform-csv = "stimulus.cli.transform_csv:run"
+stimulus-split-csv = "stimulus.cli.split_csv:run"
+stimulus-analysis-default = "stimulus.cli.analysis_default:run"
+stimulus-predict = "stimulus.cli.predict:run"
+stimulus-check-model = "stimulus.cli.check_model:run"
+stimulus-tuning = "stimulus.cli.tuning:run"
+stimulus-interpret-json = "stimulus.cli.interpret_json:run"
 [project.urls]
 Homepage = "https://github.com/mathysgrapotte/stimulus-py"
 Issues = "https://github.com/mathysgrapotte/stimulus-py/issues"
-

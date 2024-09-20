@@ -129,9 +129,7 @@ def main(config_path: str,
             pred_f.write(str(predictions))
             seed_f.write(str(best_tune_config['ray_worker_seed'])) 
 
-
-
-if __name__ == "__main__":
+def run():
     args = get_args()
     main(args.config, 
          args.model, 
@@ -142,9 +140,14 @@ if __name__ == "__main__":
          args.best_metrics, 
          args.best_optimizer,
          args.initial_weights,
-         args.gpus, 
+         args.gpus,
          args.cpus,
          args.memory,
          args.ray_results_dirpath,
          args.tune_run_name,
          args.debug_mode)
+
+
+if __name__ == "__main__":
+    run()
+

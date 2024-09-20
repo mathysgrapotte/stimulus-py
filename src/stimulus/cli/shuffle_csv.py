@@ -56,8 +56,9 @@ def main(data_csv, config_json, out_path):
     # save the modified csv
     csv_obj.save(out_path)
 
-
-
-if __name__ == "__main__":
+def run():
     args = get_args()
     main(args.csv, args.json, args.output)
+
+if __name__ == "__main__":
+    run()

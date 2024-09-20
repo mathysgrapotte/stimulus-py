@@ -6,7 +6,7 @@ import json
 import yaml
 
 from stimulus.utils.launch_utils import import_class_from_file, get_experiment, memory_split_for_ray_init
-from stimulus.json_schema import JsonSchema
+from stimulus.utils.json_schema import JsonSchema
 from stimulus.learner.raytune_learner import TuneWrapper as StimulusTuneWrapper
 from stimulus.data.csv import CsvProcessing
 
@@ -135,9 +135,7 @@ def main(data_path: str,
             raise TypeError(f"Trial failed with error {result.error}.")
 
 
-
-
-if __name__ == "__main__":
+def run():
     args = get_args()
     main(args.data, 
          args.model, 
@@ -150,3 +148,6 @@ if __name__ == "__main__":
          args.num_samples, 
          args.ray_results_dirpath,
          args.debug_mode)
+
+if __name__ == "__main__":
+    run()

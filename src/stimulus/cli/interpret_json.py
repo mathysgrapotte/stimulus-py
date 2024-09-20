@@ -144,6 +144,9 @@ def main(config_json: str, out_dir_path: str) -> str:
             json.dump(interpreted_json, experiment_file)
             json.dump({"experiment": interpreted_json["experiment"], "transform": interpreted_json["transform"]}, transform_file)
 
+def run():
+    args = get_args()
+    main(args.json, args.out_dir)
 
 if __name__ == "__main__":
     args = get_args()

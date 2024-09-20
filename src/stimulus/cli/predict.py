@@ -152,6 +152,9 @@ def main(model_path: str, weight_path: str, mconfig_path: str, econfig_path: str
     # save output 
     df.write_csv(output)
 
-if __name__ == "__main__":
+def run():
     args = get_args()
     main(args.model, args.weight, args.model_config, args.experiment_config, args.data, args.output, args.return_labels, args.split)
+
+if __name__ == "__main__":
+    run()
