@@ -6,8 +6,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from typing import Any, Tuple
 from torch.utils.data import DataLoader
-from src.stimulus.data.handlertorch import TorchDataset
-from src.stimulus.learner.predict import PredictWrapper
+from stimulus.data.handlertorch import TorchDataset
+from stimulus.learner.predict import PredictWrapper
 
 class Analysis:
     """
