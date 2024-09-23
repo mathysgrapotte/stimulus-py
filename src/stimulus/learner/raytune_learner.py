@@ -16,6 +16,11 @@ from ..utils.generic_utils import set_general_seeds
 from .predict import PredictWrapper
 from typing import Tuple
 
+from safetensors.torch import load_file as safe_load_file
+from safetensors.torch import save_file as safe_save_file
+from safetensors.torch import load_model as safe_load_model
+from safetensors.torch import save_model as safe_save_model
+
 
 class TuneWrapper():
     def __init__(self,
@@ -164,7 +169,7 @@ class TuneWrapper():
         
         # if per_trial_resource has not been asked and the resource is available set the value to either 1 or number_available resource / num_samples
         elif resurce_key not in self.config["tune"].keys() and cluster_max_resources[resource_type] != 0.0:
-            # TODO maybe set the default to 0.5 instead of 1 ? fractional use in case of GPU?
+            # TODO maybe set the default to 0.5 instead of 1 ? fractional use in case of GPU? Should this be a mandatory parameter?
             per_trial_resource = max(1, (cluster_max_resources[resource_type] // self.config["tune"]["tune_params"]["num_samples"] ))
 
         return per_trial_resource
@@ -256,14 +261,14 @@ class TuneModel(Trainable):
                 **{'train_'+metric : value for metric,value in predict_train.compute_metrics(metrics).items()}}
 
     def export_model(self, export_dir: str) -> None:
-        torch.save(self.model.state_dict(), os.path.join(export_dir,  "model.pt"))
+        safe_save_model(self.model, os.path.join(export_dir,  "model.safetensors"))
 
     def load_checkpoint(self, checkpoint_dir: str) -> None:
-        self.model.load_state_dict(torch.load(os.path.join(checkpoint_dir, "model.pt")))
+        self.model = safe_load_model(self.model, os.path.join(checkpoint_dir, "model.safetensors"))
         self.optimizer.load_state_dict(torch.load(os.path.join(checkpoint_dir, "optimizer.pt")))
 
     def save_checkpoint(self, checkpoint_dir: str) -> dict | None:
-        torch.save(self.model.state_dict(), os.path.join(checkpoint_dir, "model.pt"))
+        safe_save_model(self.model, os.path.join(checkpoint_dir, "model.safetensors"))
         torch.save(self.optimizer.state_dict(), os.path.join(checkpoint_dir, "optimizer.pt"))
         return checkpoint_dir
     

@@ -1,7 +1,8 @@
 import json
 import os
 import torch
-from safetensors.torch import save_model as safe_save
+from safetensors.torch import load_file as safe_load_file
+from safetensors.torch import save_file as safe_save_file
 
 class TuneParser():
     def __init__(self, results):
@@ -57,14 +58,14 @@ class TuneParser():
         Get the best model weights from the results.
         """
         checkpoint = self.results.get_best_result().checkpoint.to_directory()
-        checkpoint = os.path.join(checkpoint, "model.pt")
-        return torch.load(checkpoint)
+        checkpoint = os.path.join(checkpoint, "model.safetensors")
+        return safe_load_file(checkpoint)
     
     def save_best_model(self, output: str) -> None:
         """
         Save the best model weights to a file.
         """
-        safe_save(self.get_best_model(), output)
+        safe_save_file(self.get_best_model(), output)
 
     def get_best_optimizer(self) -> dict:
         """

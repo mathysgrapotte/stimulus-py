@@ -26,7 +26,7 @@ def get_args():
     
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("-j", "--json", type=str, required=True, metavar="FILE", help='The json config file that hold all transform - split - parameter info')
-    parser.add_argument("-d", "--out_dir", type=str, required=False, nargs='?', const='./', default='./', metavar="DIR", help='The output dir where all he jason are written to. Output Json will be called input_json_nam-#[number].json. Default -> ./')
+    parser.add_argument("-d", "--out_dir", type=str, required=False, nargs='?', const='./', default='./', metavar="DIR", help='The output dir where all json files are written to. Output Json will be called input_json_nam-#[number].json. Default -> ./')
 
     args = parser.parse_args()
     return args
@@ -149,5 +149,4 @@ def run():
     main(args.json, args.out_dir)
 
 if __name__ == "__main__":
-    args = get_args()
-    main(args.json, args.out_dir)
+    run()
