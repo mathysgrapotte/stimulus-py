@@ -1,3 +1,4 @@
+import os
 import random
 from typing import Union
 
@@ -25,3 +26,17 @@ def set_general_seeds(seed_value: Union[int, None]) -> None:
     # set torch seed, diffrently from the two above torch can nopt take Noneas input value so it will not be called in that case.
     if seed_value is not None:
         torch.manual_seed(seed_value)
+
+
+def check_path(path: str) -> str | None:
+    if not os.path.exists(path):
+        raise ValueError(f"Data path does not exist. Given path: {path}")
+    else:
+        return os.path.abspath(path)
+
+
+def check_not_none(val: any, name: str) -> any:
+    if val is None:
+        raise ValueError(f"{name} is None. Please set a value for {name}")
+    else:
+        return val
