@@ -4,7 +4,7 @@ import datetime
 import logging
 import os
 import random
-from typing import Optional, tuple
+from typing import Any, Optional, TypedDict
 
 import numpy as np
 import torch
@@ -13,12 +13,18 @@ from ray.tune import Trainable, schedulers
 from safetensors.torch import load_model as safe_load_model
 from safetensors.torch import save_model as safe_save_model
 from torch import nn, optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from stimulus.data.handlertorch import TorchDataset
 from stimulus.learner.predict import PredictWrapper
 from stimulus.utils.generic_utils import set_general_seeds
 from stimulus.utils.yaml_model_schema import YamlRayConfigLoader
+
+
+class CheckpointDict(TypedDict):
+    """Dictionary type for checkpoint data."""
+
+    checkpoint_dir: str
 
 
 class TuneWrapper:
@@ -82,7 +88,7 @@ class TuneWrapper:
 
         # working towards the path for the tune_run directory. if ray_results_dir None ray will put it under home so we will do the same here.
         if ray_results_dir is None:
-            ray_results_dir = os.environ.get("HOME")
+            ray_results_dir = os.environ.get("HOME", "")
         # then we are able to pass the whole correct tune_run path to the trainable function. so it can use thaqt to place the debug dir under if needed.
         self.config["tune_run_path"] = os.path.join(ray_results_dir, tune_run_name)
 
@@ -130,21 +136,25 @@ class TuneWrapper:
 
     def tune(self) -> None:
         """Run the tuning process."""
-        return self.tuner.fit()
+        self.tuner.fit()
 
     def _chek_per_trial_resources(
         self,
         resurce_key: str,
-        cluster_max_resources: dict,
+        cluster_max_resources: dict[str, float],
         resource_type: str,
-    ) -> tuple[int, int]:
+    ) -> float:
         """Helper function that check that user requested per trial resources are not exceeding the available resources for the ray cluster.
 
         If the per trial resources are not asked they are set to a default resoanable ammount.
 
-        resurce_key:            str object          the key used to look into the self.config["tune"]
-        cluster_max_resources:  dict object         the output of the ray.cluster_resources() function. It hold what ray has found to be the available resources for CPU, GPU and Memory
-        resource_type:          str object          the key used to llok into the cluster_resources dict
+        Args:
+            resurce_key: The key used to look into the self.config["tune"]
+            cluster_max_resources: The output of the ray.cluster_resources() function. It hold what ray has found to be the available resources for CPU, GPU and Memory
+            resource_type: The key used to llok into the cluster_resources dict
+
+        Returns:
+            The amount of resources per trial to use
         """
         if resource_type == "GPU" and resource_type not in cluster_resources():
             # ray does not have a GPU field also if GPUs were set to zero. So trial GPU resources have to be set to zero.
@@ -155,13 +165,13 @@ class TuneWrapper:
                 "#### ray did not detect any GPU, if you do not want to use GPU set max_gpus=0, or in nextflow --max_gpus 0.",
             )
 
-        per_trial_resource = None
+        per_trial_resource: float = 0.0
         # if everything is alright, leave the value as it is.
         if (
             resurce_key in self.config["tune"]
             and self.config["tune"][resurce_key] <= cluster_max_resources[resource_type]
         ):
-            per_trial_resource = self.config["tune"][resurce_key]
+            per_trial_resource = float(self.config["tune"][resurce_key])
 
         # if per_trial_resource are more than what is avaialble to ray set them to what is available and warn the user
         elif (
@@ -175,18 +185,20 @@ class TuneWrapper:
                 f"available: {cluster_max_resources[resource_type]} "
                 "overwriting value to max available",
             )
-            per_trial_resource = cluster_max_resources[resource_type]
+            per_trial_resource = float(cluster_max_resources[resource_type])
 
         # if per_trial_resource has not been asked and there is none available set them to zero
         elif resurce_key not in self.config["tune"] and cluster_max_resources[resource_type] == 0.0:
-            per_trial_resource = 0
+            per_trial_resource = 0.0
 
         # if per_trial_resource has not been asked and the resource is available set the value to either 1 or number_available resource / num_samples
         elif resurce_key not in self.config["tune"] and cluster_max_resources[resource_type] != 0.0:
             # TODO maybe set the default to 0.5 instead of 1 ? fractional use in case of GPU? Should this be a mandatory parameter?
-            per_trial_resource = max(
-                1,
-                (cluster_max_resources[resource_type] // self.config["tune"]["tune_params"]["num_samples"]),
+            per_trial_resource = float(
+                max(
+                    1,
+                    (cluster_max_resources[resource_type] // self.config["tune"]["tune_params"]["num_samples"]),
+                ),
             )
 
         return per_trial_resource
@@ -195,7 +207,7 @@ class TuneWrapper:
 class TuneModel(Trainable):
     """Trainable model class for Ray Tune."""
 
-    def setup(self, config: dict, training: object, validation: object) -> None:
+    def setup(self, config: dict[Any, Any]) -> None:
         """Get the model, loss function(s), optimizer, train and test data from the config."""
         # set the seeds the second time, first in TuneWrapper initialization. This will make all important seed worker specific.
         set_general_seeds(self.config["ray_worker_seed"])
@@ -229,6 +241,8 @@ class TuneModel(Trainable):
 
         # use dataloader on training/validation data
         self.batch_size = config["data_params"]["batch_size"]
+        training: Dataset = config["training"]
+        validation: Dataset = config["validation"]
         self.training = DataLoader(
             training,
             batch_size=self.batch_size,
@@ -272,7 +286,7 @@ class TuneModel(Trainable):
                 self.model.batch(x=x, y=y, optimizer=self.optimizer, **self.loss_dict)
         return self.objective()
 
-    def objective(self) -> dict:
+    def objective(self) -> dict[str, float]:
         """Compute the objective metric(s) for the tuning process."""
         metrics = [
             "loss",
@@ -291,17 +305,22 @@ class TuneModel(Trainable):
             **{"train_" + metric: value for metric, value in predict_train.compute_metrics(metrics).items()},
         }
 
-    def export_model(self, export_dir: str) -> None:
+    def export_model(self, export_dir: str | None = None) -> None:  # type: ignore[override]
         """Export model to safetensors format."""
+        if export_dir is None:
+            return
         safe_save_model(self.model, os.path.join(export_dir, "model.safetensors"))
 
-    def load_checkpoint(self, checkpoint_dir: str) -> None:
+    def load_checkpoint(self, checkpoint: dict[Any, Any] | None) -> None:
         """Load model and optimizer state from checkpoint."""
+        if checkpoint is None:
+            return
+        checkpoint_dir = checkpoint["checkpoint_dir"]
         self.model = safe_load_model(self.model, os.path.join(checkpoint_dir, "model.safetensors"))
         self.optimizer.load_state_dict(torch.load(os.path.join(checkpoint_dir, "optimizer.pt")))
 
-    def save_checkpoint(self, checkpoint_dir: str) -> dict | None:
+    def save_checkpoint(self, checkpoint_dir: str) -> dict[Any, Any]:
         """Save model and optimizer state to checkpoint."""
         safe_save_model(self.model, os.path.join(checkpoint_dir, "model.safetensors"))
         torch.save(self.optimizer.state_dict(), os.path.join(checkpoint_dir, "optimizer.pt"))
-        return checkpoint_dir
+        return {"checkpoint_dir": checkpoint_dir}

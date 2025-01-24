@@ -95,11 +95,11 @@ def parse_y_keys(y: dict[str, Any], data: pl.DataFrame, y_type: str = "pred") ->
         return y
 
     parsed_y = {}
-    for k1 in y:
+    for k1, v1 in y.items():
         for k2 in data.columns:
             if k1 == k2.split(":")[0]:
                 new_key = f"{k1}:{y_type}:{k2.split(':')[2]}"
-                parsed_y[new_key] = y[k1]
+                parsed_y[new_key] = v1
 
     return parsed_y
 
@@ -140,8 +140,8 @@ def main(
     data_path: str,
     output: str,
     *,
-    return_labels: bool,
-    split: int | None,
+    return_labels: bool = False,
+    split: int | None = None,
 ) -> None:
     """Run model prediction pipeline.
 
@@ -171,7 +171,8 @@ def main(
         shuffle=False,
     )
 
-    out = PredictWrapper(model, dataloader).predict(return_labels=return_labels)
+    predictor = PredictWrapper(model, dataloader)
+    out = predictor.predict(return_labels=return_labels)
     y_pred, y_true = out if return_labels else (out, {})
 
     y_pred = {k: v.tolist() for k, v in y_pred.items()}

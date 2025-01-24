@@ -1,12 +1,12 @@
 """Default analysis module for stimulus package."""
 
 import math
-from typing import Any
+from typing import Any, Union
 
-import matplotlib as mpl
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from matplotlib.ticker import StrMethodFormatter
 from torch.utils.data import DataLoader
 
 from stimulus.data.handlertorch import TorchDataset
@@ -66,8 +66,11 @@ class Analysis:
         im = ax.imshow(data, **kwargs)
 
         # Create colorbar
-        cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
-        cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+        if ax.figure is not None and hasattr(ax.figure, "colorbar"):
+            cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+            cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+        else:
+            cbar = None
 
         # Show all ticks and label them with the respective list entries.
         ax.set_xticks(np.arange(data.shape[1]), labels=col_labels)
@@ -93,7 +96,7 @@ class Analysis:
     def annotate_heatmap(
         im: Any,
         data: np.ndarray | None = None,
-        valfmt: str = "{x:.2f}",
+        valfmt: Union[str, StrMethodFormatter] = "{x:.2f}",
         textcolors: tuple[str, str] = ("black", "white"),
         threshold: float | None = None,
         **textkw: Any,
@@ -134,7 +137,7 @@ class Analysis:
 
         # Get the formatter in case a string is supplied
         if isinstance(valfmt, str):
-            valfmt = mpl.ticker.StrMethodFormatter(valfmt)
+            valfmt = StrMethodFormatter(valfmt)
 
         # Loop over the data and create a `Text` for each "pixel".
         # Change the text's color depending on the data.
@@ -142,7 +145,7 @@ class Analysis:
         for i in range(data.shape[0]):
             for j in range(data.shape[1]):
                 kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold)])
-                text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
+                text = im.axes.text(j, i, valfmt(data[i, j]), **kw)
                 texts.append(text)
 
         return texts

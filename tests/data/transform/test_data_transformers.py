@@ -13,6 +13,7 @@ from src.stimulus.data.transform.data_transformation_generators import (
     ReverseComplement,
     UniformTextMasker,
 )
+from stimulus.utils.yaml_data import dump_yaml_list_into_files, generate_data_configs
 
 
 class DataTransformerTest:
@@ -49,7 +50,7 @@ def uniform_text_masker() -> DataTransformerTest:
     """Return a UniformTextMasker test object."""
     np.random.seed(42)  # Set seed before creating transformer
     transformer = UniformTextMasker(mask="N", probability=0.1)
-    params = {}  # Remove seed from params
+    params: dict[str, Any] = {}  # Remove seed from params
     single_input = "ACGTACGT"
     expected_single_output = "ACGTACNT"
     multiple_inputs = ["ATCGATCGATCG", "ATCG"]
@@ -69,7 +70,7 @@ def gaussian_noise() -> DataTransformerTest:
     """Return a GaussianNoise test object."""
     np.random.seed(42)  # Set seed before creating transformer
     transformer = GaussianNoise(mean=0, std=1)
-    params = {}  # Remove seed from params
+    params: dict[str, Any] = {}  # Remove seed from params
     single_input = 5.0
     expected_single_output = 5.4967141530112327
     multiple_inputs = [1.0, 2.0, 3.0]
@@ -89,7 +90,7 @@ def gaussian_chunk() -> DataTransformerTest:
     """Return a GaussianChunk test object."""
     np.random.seed(42)  # Set seed before creating transformer
     transformer = GaussianChunk(chunk_size=2)
-    params = {}  # Remove seed from params
+    params: dict[str, Any] = {}  # Remove seed from params
     single_input = "ACGT"
     expected_single_output = "CG"
     multiple_inputs = ["ACGT", "TGCA"]
@@ -164,7 +165,7 @@ class TestGaussianNoise:
         """Test transforming multiple floats."""
         test_data = request.getfixturevalue(test_data_name)
         transformed_data = test_data.transformer.transform_all(test_data.multiple_inputs, **test_data.params)
-        assert isinstance(transformed_data, np.ndarray)
+        assert isinstance(transformed_data, list)
         for item in transformed_data:
             assert isinstance(item, float)
         assert len(transformed_data) == len(test_data.expected_multiple_outputs)
@@ -199,7 +200,7 @@ class TestGaussianChunk:
         """Test that the transform fails if chunk size is greater than the length of the input string."""
         test_data = request.getfixturevalue(test_data_name)
         transformer = GaussianChunk(chunk_size=100)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The input data is shorter than the chunk size"):
             transformer.transform(test_data.single_input)
 
 
@@ -226,11 +227,10 @@ class TestReverseComplement:
 
 
 @pytest.fixture
-def titanic_config_path(base_config):
+def titanic_config_path(base_config: dict) -> str:
     """Ensure the config file exists and return its path."""
     config_path = "tests/test_data/titanic/titanic_sub_config_0.yaml"
 
-    # Generate the sub configs if file doesn't exist
     if not os.path.exists(config_path):
         configs = generate_data_configs(base_config)
         dump_yaml_list_into_files([configs[0]], "tests/test_data/titanic/", "titanic_sub_config")

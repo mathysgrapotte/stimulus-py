@@ -1,8 +1,10 @@
 """A module for making predictions with PyTorch models using DataLoaders."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import torch
+from torch import Tensor, nn
+from torch.utils.data import DataLoader
 
 from stimulus.utils.generic_utils import ensure_at_least_1d
 from stimulus.utils.performance import Performance
@@ -14,7 +16,7 @@ class PredictWrapper:
     It also provides the functionalities to measure the performance of the model.
     """
 
-    def __init__(self, model: object, dataloader: object, loss_dict: Optional[dict[str, Any]] = None) -> None:
+    def __init__(self, model: nn.Module, dataloader: DataLoader, loss_dict: Optional[dict[str, Any]] = None) -> None:
         """Initialize the PredictWrapper.
 
         Args:
@@ -33,7 +35,11 @@ class PredictWrapper:
 
             logging.warning("Not able to run model.eval: %s", str(e))
 
-    def predict(self, *, return_labels: bool = False) -> dict[str, torch.Tensor]:
+    def predict(
+        self,
+        *,
+        return_labels: bool = False,
+    ) -> Union[dict[str, Tensor], tuple[dict[str, Tensor], dict[str, Tensor]]]:
         """Get the model predictions.
 
         Basically, it runs a foward pass on the model for each batch,
@@ -54,8 +60,8 @@ class PredictWrapper:
         # create empty dictionaries with the column names
         first_batch = next(iter(self.dataloader))
         keys = first_batch[1].keys()
-        predictions = {k: [] for k in keys}
-        labels = {k: [] for k in keys}
+        predictions: dict[str, list[Tensor]] = {k: [] for k in keys}
+        labels: dict[str, list[Tensor]] = {k: [] for k in keys}
 
         # get the predictions (and labels) for each batch
         with torch.no_grad():
@@ -73,7 +79,7 @@ class PredictWrapper:
             return {k: torch.cat(v) for k, v in predictions.items()}
         return {k: torch.cat(v) for k, v in predictions.items()}, {k: torch.cat(v) for k, v in labels.items()}
 
-    def handle_predictions(self, predictions: Any, y: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    def handle_predictions(self, predictions: Any, y: dict[str, Tensor]) -> dict[str, Tensor]:
         """Handle the model outputs from forward pass, into a dictionary of tensors, just like y."""
         if len(y) == 1:
             return {next(iter(y.keys())): predictions}
@@ -111,8 +117,15 @@ class PredictWrapper:
 
         # TODO currently we computes the average performance metric across target y, but maybe in the future we want something different
         """
-        if (not hasattr(self, "predictions")) or (not hasattr(self, "labels")):
-            self.predictions, self.labels = self.predict(return_labels=True)
+        if not hasattr(self, "predictions") or not hasattr(self, "labels"):
+            predictions, labels = self.predict(return_labels=True)
+            self.predictions = predictions
+            self.labels = labels
+
+        # Explicitly type the labels and predictions as dictionaries with str keys
+        labels_dict: dict[str, Tensor] = self.labels if isinstance(self.labels, dict) else {}
+        predictions_dict: dict[str, Tensor] = self.predictions if isinstance(self.predictions, dict) else {}
+
         return sum(
-            Performance(labels=self.labels[k], predictions=self.predictions[k], metric=metric).val for k in self.labels
-        ) / len(self.labels)
+            Performance(labels=labels_dict[k], predictions=predictions_dict[k], metric=metric).val for k in labels_dict
+        ) / len(labels_dict)

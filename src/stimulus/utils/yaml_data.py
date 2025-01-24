@@ -1,52 +1,78 @@
-from typing import Dict, List, Optional, Union
+"""Utility module for handling YAML configuration files and their validation."""
+
+from typing import Any, Optional, Union
 
 import yaml
 from pydantic import BaseModel, ValidationError, field_validator
 
 
 class YamlGlobalParams(BaseModel):
+    """Model for global parameters in YAML configuration."""
+
     seed: int
 
 
 class YamlColumnsEncoder(BaseModel):
+    """Model for column encoder configuration."""
+
     name: str
-    params: Optional[Dict[str, Union[str, list]]]  # Allow both string and list values
+    params: Optional[dict[str, Union[str, list[Any]]]]  # Allow both string and list values
 
 
 class YamlColumns(BaseModel):
+    """Model for column configuration."""
+
     column_name: str
     column_type: str
     data_type: str
-    encoder: List[YamlColumnsEncoder]
+    encoder: list[YamlColumnsEncoder]
 
 
 class YamlTransformColumnsTransformation(BaseModel):
+    """Model for column transformation configuration."""
+
     name: str
-    params: Optional[Dict[str, Union[list, float]]]  # Allow both list and float values
+    params: Optional[dict[str, Union[list[Any], float]]]  # Allow both list and float values
 
 
 class YamlTransformColumns(BaseModel):
+    """Model for transform columns configuration."""
+
     column_name: str
-    transformations: List[YamlTransformColumnsTransformation]
+    transformations: list[YamlTransformColumnsTransformation]
 
 
 class YamlTransform(BaseModel):
+    """Model for transform configuration."""
+
     transformation_name: str
-    columns: List[YamlTransformColumns]
+    columns: list[YamlTransformColumns]
 
     @field_validator("columns")
     @classmethod
-    def validate_param_lists_across_columns(cls, columns) -> List[YamlTransformColumns]:
+    def validate_param_lists_across_columns(cls, columns: list[YamlTransformColumns]) -> list[YamlTransformColumns]:
+        """Validate that parameter lists across columns have consistent lengths.
+
+        Args:
+            columns: List of transform columns to validate
+
+        Returns:
+            The validated columns list
+        """
         # Get all parameter list lengths across all columns and transformations
-        all_list_lengths = set()
+        all_list_lengths: set[int] = set()
 
         for column in columns:
             for transformation in column.transformations:
-                if transformation.params:
-                    for param_value in transformation.params.values():
-                        if isinstance(param_value, list):
-                            if len(param_value) > 0:  # Non-empty list
-                                all_list_lengths.add(len(param_value))
+                if transformation.params and any(
+                    isinstance(param_value, list) and len(param_value) > 0
+                    for param_value in transformation.params.values()
+                ):
+                    all_list_lengths.update(
+                        len(param_value)
+                        for param_value in transformation.params.values()
+                        if isinstance(param_value, list) and len(param_value) > 0
+                    )
 
         # Skip validation if no lists found
         if not all_list_lengths:
@@ -54,7 +80,7 @@ class YamlTransform(BaseModel):
 
         # Check if all lists either have length 1, or all have the same length
         all_list_lengths.discard(1)  # Remove length 1 as it's always valid
-        if len(all_list_lengths) > 1:  # Multiple different lengths found, since sets do not allow duplicates
+        if len(all_list_lengths) > 1:  # Multiple different lengths found
             raise ValueError(
                 "All parameter lists across columns must either contain one element or have the same length",
             )
@@ -63,26 +89,34 @@ class YamlTransform(BaseModel):
 
 
 class YamlSplit(BaseModel):
+    """Model for split configuration."""
+
     split_method: str
-    params: Dict[str, List[float]]  # More specific type for split parameters
-    split_input_columns: List[str]
+    params: dict[str, list[float]]  # More specific type for split parameters
+    split_input_columns: list[str]
 
 
 class YamlConfigDict(BaseModel):
+    """Model for main YAML configuration."""
+
     global_params: YamlGlobalParams
-    columns: List[YamlColumns]
-    transforms: List[YamlTransform]
-    split: List[YamlSplit]
+    columns: list[YamlColumns]
+    transforms: list[YamlTransform]
+    split: list[YamlSplit]
 
 
 class YamlSubConfigDict(BaseModel):
+    """Model for sub-configuration generated from main config."""
+
     global_params: YamlGlobalParams
-    columns: List[YamlColumns]
+    columns: list[YamlColumns]
     transforms: YamlTransform
     split: YamlSplit
 
 
 class YamlSchema(BaseModel):
+    """Model for validating YAML schema."""
+
     yaml_conf: YamlConfigDict
 
 
@@ -216,84 +250,58 @@ def dump_yaml_list_into_files(
     directory_path: str,
     base_name: str,
 ) -> None:
-    """Dumps a list of YAML configurations into separate files with custom formatting.
+    """Dumps a list of YAML configurations into separate files with custom formatting."""
+    # Create a new class attribute rather than assigning to the method
+    # Remove this line since we'll add ignore_aliases to CustomDumper instead
 
-    This function takes a list of YAML configurations and writes each one to a separate file,
-    applying custom formatting rules to ensure consistent and readable output. It handles
-    special cases like None values, nested lists, and proper indentation.
-
-    Args:
-        yaml_list: List of YamlSubConfigDict objects to be written to files
-        directory_path: Directory path where the files should be created
-        base_name: Base name for the output files. Files will be named {base_name}_{index}.yaml
-
-    The function applies several custom formatting rules:
-    - None values are represented as empty strings
-    - Nested lists use appropriate flow styles based on content type
-    - Extra newlines are added between root-level elements
-    - Proper indentation is maintained throughout
-    """
-    # Disable YAML aliases to prevent reference-style output
-    yaml.Dumper.ignore_aliases = lambda *args: True
-
-    def represent_none(dumper, _):
+    def represent_none(dumper: yaml.Dumper, _: Any) -> yaml.Node:
         """Custom representer to format None values as empty strings in YAML output."""
         return dumper.represent_scalar("tag:yaml.org,2002:null", "")
 
-    def custom_representer(dumper, data):
-        """Custom representer to handle different types of lists with appropriate formatting.
-
-        Applies different flow styles based on content:
-        - Empty lists -> empty string
-        - Lists of dicts (e.g. columns) -> block style (vertical)
-        - Lists of lists (e.g. split params) -> flow style (inline)
-        - Other lists -> flow style
-        """
+    def custom_representer(dumper: yaml.Dumper, data: Any) -> yaml.Node:
+        """Custom representer to handle different types of lists with appropriate formatting."""
         if isinstance(data, list):
             if len(data) == 0:
                 return dumper.represent_scalar("tag:yaml.org,2002:null", "")
             if isinstance(data[0], dict):
-                # Use block style for structured data like columns
                 return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=False)
             if isinstance(data[0], list):
-                # Use flow style for numeric data like split ratios
                 return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
         return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
 
     class CustomDumper(yaml.Dumper):
         """Custom YAML dumper that adds extra formatting controls."""
 
-        def write_line_break(self, data=None):
-            """Add extra newline after root-level elements."""
-            super().write_line_break(data)
-            if len(self.indents) <= 1:  # At root level
-                super().write_line_break(data)
+        def ignore_aliases(self, _data: Any) -> bool:
+            """Ignore aliases in the YAML output."""
+            return True
 
-        def increase_indent(self, flow=False, indentless=False):
+        def write_line_break(self, _data: Any = None) -> None:
+            """Add extra newline after root-level elements."""
+            super().write_line_break(_data)
+            if len(self.indents) <= 1:  # At root level
+                super().write_line_break(_data)
+
+        def increase_indent(self, *, flow: bool = False, indentless: bool = False) -> None:  # type: ignore[override]
             """Ensure consistent indentation by preventing indentless sequences."""
-            return super().increase_indent(flow, False)
+            return super().increase_indent(
+                flow=flow,
+                indentless=indentless,
+            )  # Force indentless to False for better formatting
 
     # Register the custom representers with our dumper
     yaml.add_representer(type(None), represent_none, Dumper=CustomDumper)
     yaml.add_representer(list, custom_representer, Dumper=CustomDumper)
 
     for i, yaml_dict in enumerate(yaml_list):
-        # Convert Pydantic model to dict, excluding None values
         dict_data = yaml_dict.model_dump(exclude_none=True)
 
-        def fix_params(input_dict):
-            """Recursively process dictionary to properly handle params fields.
-
-            Special handling for:
-            - Empty params fields -> empty dict (will be represented as {} in YAML)
-            - Transformation params -> empty dict if empty
-            - Nested dicts and lists -> recursive processing
-            """
+        def fix_params(input_dict: dict[str, Any]) -> dict[str, Any]:
+            """Recursively process dictionary to properly handle params fields."""
             if isinstance(input_dict, dict):
-                processed_dict = {}
+                processed_dict: dict[str, Any] = {}
                 for key, value in input_dict.items():
                     if key == "encoder" and isinstance(value, list):
-                        # Ensure each encoder has a params field
                         processed_dict[key] = []
                         for encoder in value:
                             processed_encoder = dict(encoder)
@@ -310,7 +318,6 @@ def dump_yaml_list_into_files(
                     elif isinstance(value, dict):
                         processed_dict[key] = fix_params(value)
                     elif isinstance(value, list):
-                        # Process lists, recursing into dict elements
                         processed_dict[key] = [
                             fix_params(list_item) if isinstance(list_item, dict) else list_item for list_item in value
                         ]
@@ -333,20 +340,24 @@ def dump_yaml_list_into_files(
             )
 
 
-def check_yaml_schema(config_yaml: str) -> str:
-    """Using pydantic this function confirms that the fields have the correct input type
-    If the children field is specific to a parent, the children fields class is hosted in the parent fields class
+def check_yaml_schema(config_yaml: YamlConfigDict) -> str:
+    """Validate YAML configuration fields have correct types.
 
-    If any field in not the right type, the function prints an error message explaining the problem and exits the python code
+    If the children field is specific to a parent, the children fields class is hosted in the parent fields class.
+    If any field in not the right type, the function prints an error message explaining the problem and exits the python code.
 
     Args:
-        config_yaml (dict): The dict containing the fields of the yaml configuration file
+        config_yaml: The YamlConfigDict containing the fields of the yaml configuration file
 
     Returns:
-        None
+        str: Empty string if validation succeeds
+
+    Raises:
+        ValueError: If validation fails
     """
     try:
         YamlSchema(yaml_conf=config_yaml)
     except ValidationError as e:
-        print(e)
-        raise ValueError("Wrong type on a field, see the pydantic report above")  # Crashes in case of an error raised
+        # Use logging instead of print for error handling
+        raise ValueError("Wrong type on a field, see the pydantic report above") from e
+    return ""

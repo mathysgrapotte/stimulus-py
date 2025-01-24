@@ -1,14 +1,29 @@
-from typing import Callable, Optional, Tuple
+"""Titanic dataset model implementation."""
+
+from typing import Callable, Optional
 
 import torch
 from torch import nn
+from torch.optim import Optimizer
 
 
-class ModelTitanic(nn.Module):
+class ModelTitanic(torch.nn.Module):
     """A simple model for Titanic dataset."""
 
-    def __init__(self, nb_neurons_intermediate_layer: int = 7, nb_intermediate_layers: int = 3, nb_classes: int = 2):
-        super(ModelTitanic, self).__init__()
+    def __init__(
+        self,
+        nb_neurons_intermediate_layer: int = 7,
+        nb_intermediate_layers: int = 3,
+        nb_classes: int = 2,
+    ) -> None:
+        """Initialize model layers.
+
+        Args:
+            nb_neurons_intermediate_layer: Number of neurons in intermediate layers
+            nb_intermediate_layers: Number of intermediate layers
+            nb_classes: Number of output classes
+        """
+        super().__init__()
         self.input_layer = nn.Linear(7, nb_neurons_intermediate_layer)
         self.intermediate = nn.modules.ModuleList(
             [
@@ -29,8 +44,9 @@ class ModelTitanic(nn.Module):
         parch: torch.Tensor,
         fare: torch.Tensor,
         embarked: torch.Tensor,
-    ) -> dict:
+    ) -> torch.Tensor:
         """Forward pass of the model.
+
         It should return the output as a dictionary, with the same keys as `y`.
 
         NOTE that the final `x` is a torch.Tensor with shape (batch_size, nb_classes).
@@ -40,11 +56,11 @@ class ModelTitanic(nn.Module):
         x = self.relu(self.input_layer(x))
         for layer in self.intermediate:
             x = self.relu(layer(x))
-        x = self.softmax(self.output_layer(x))
-        return x
+        return self.softmax(self.output_layer(x))
 
     def compute_loss(self, output: torch.Tensor, survived: torch.Tensor, loss_fn: Callable) -> torch.Tensor:
         """Compute the loss.
+
         `output` is the output tensor of the forward pass.
         `survived` is the target tensor -> label column name.
         `loss_fn` is the loss function to be used.
@@ -53,12 +69,13 @@ class ModelTitanic(nn.Module):
 
     def batch(
         self,
-        x: dict,
-        y: dict,
+        x: dict[str, torch.Tensor],
+        y: dict[str, torch.Tensor],
         loss_fn: Callable,
-        optimizer: Optional[Callable] = None,
-    ) -> Tuple[torch.Tensor, dict]:
+        optimizer: Optional[Optimizer] = None,
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Perform one batch step.
+
         `x` is a dictionary with the input tensors.
         `y` is a dictionary with the target tensors.
         `loss_fn` is the loss function to be used.
@@ -68,8 +85,10 @@ class ModelTitanic(nn.Module):
         """
         output = self.forward(**x)
         loss = self.compute_loss(output, **y, loss_fn=loss_fn)
+
         if optimizer is not None:
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        return loss, output
+
+        return loss, {"output": output}

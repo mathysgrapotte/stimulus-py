@@ -36,6 +36,7 @@ dependencies = [
     "numpy>=1.26.0,<2.0.0",
     "pandas>=2.2.0",
     "polars-lts-cpu>=0.20.30,<1.12.0",
+    "pydantic>=2.0.0",
     "ray[default,train,tune]>=2.23.0; python_version < '3.12'",
     "ray[default,train,tune]>=2.38.0; python_version >= '3.12'",
     "safetensors>=0.4.5",

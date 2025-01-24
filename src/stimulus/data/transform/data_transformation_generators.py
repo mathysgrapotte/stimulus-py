@@ -30,8 +30,8 @@ class AbstractDataTransformer(ABC):
 
     def __init__(self) -> None:
         """Initialize the data transformer."""
-        self.add_row = None
-        self.seed = 42
+        self.add_row: bool = False
+        self.seed: int = 42
 
     @abstractmethod
     def transform(self, data: Any) -> Any:
@@ -98,7 +98,7 @@ class UniformTextMasker(AbstractNoiseGenerator):
         transform_all: adds character masking to a list of data points
     """
 
-    def __init__(self, probability: float = 0.1, mask: str = "*", seed: float = 42) -> None:
+    def __init__(self, probability: float = 0.1, mask: str = "*", seed: int = 42) -> None:
         """Initialize the text masker.
 
         Args:
@@ -148,7 +148,7 @@ class GaussianNoise(AbstractNoiseGenerator):
         transform_all: adds noise to a list of data points
     """
 
-    def __init__(self, mean: float = 0, std: float = 1, seed: float = 42) -> None:
+    def __init__(self, mean: float = 0, std: float = 1, seed: int = 42) -> None:
         """Initialize the Gaussian noise generator.
 
         Args:
@@ -173,17 +173,17 @@ class GaussianNoise(AbstractNoiseGenerator):
         np.random.seed(self.seed)
         return data + np.random.normal(self.mean, self.std)
 
-    def transform_all(self, data: list) -> np.array:
+    def transform_all(self, data: list) -> list:
         """Adds Gaussian noise to a list of data points.
 
         Args:
             data (list): the data to be transformed
 
         Returns:
-            transformed_data (np.array): the transformed data points
+            transformed_data (list): the transformed data points
         """
         np.random.seed(self.seed)
-        return np.array(np.array(data) + np.random.normal(self.mean, self.std, len(data)))
+        return list(np.array(data) + np.random.normal(self.mean, self.std, len(data)))
 
 
 class ReverseComplement(AbstractAugmentationGenerator):
@@ -254,7 +254,7 @@ class GaussianChunk(AbstractAugmentationGenerator):
         transform_all: chunks multiple lists
     """
 
-    def __init__(self, chunk_size: int, seed: float = 42, std: float = 1) -> None:
+    def __init__(self, chunk_size: int, seed: int = 42, std: float = 1) -> None:
         """Initialize the Gaussian chunk generator.
 
         Args:
@@ -272,9 +272,6 @@ class GaussianChunk(AbstractAugmentationGenerator):
 
         Args:
             data (str): the sequence to be transformed
-            chunk_size (int): the size of the chunk
-            seed (float): the seed for reproducibility
-            std (float): the standard deviation of the gaussian distribution
 
         Returns:
             transformed_data (str): the chunk of the sequence
@@ -312,9 +309,6 @@ class GaussianChunk(AbstractAugmentationGenerator):
 
         Args:
             data (list): the sequences to be transformed
-            chunk_size (int): the size of the chunk
-            seed (float): the seed for reproducibility
-            std (float): the standard deviation of the gaussian distribution
 
         Returns:
             transformed_data (list): the transformed sequences

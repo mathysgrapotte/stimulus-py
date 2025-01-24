@@ -7,6 +7,7 @@ The resulting YAML files can be used as input configurations for the stimulus pa
 """
 
 import argparse
+from typing import Any
 
 import yaml
 
@@ -44,7 +45,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main(config_yaml: str, out_dir_path: str) -> str:
+def main(config_yaml: str, out_dir_path: str) -> None:
     """Reads a YAML config file and generates all possible data configurations.
 
     This script reads a YAML with a defined structure and creates all the YAML files ready to be passed to
@@ -58,16 +59,16 @@ def main(config_yaml: str, out_dir_path: str) -> str:
     and uses the default split behavior.
     """
     # read the yaml experiment config and load it to dictionary
-    yaml_config = {}
+    yaml_config: dict[str, Any] = {}
     with open(config_yaml) as conf_file:
         yaml_config = yaml.safe_load(conf_file)
 
+    yaml_config_dict: YamlConfigDict = YamlConfigDict(**yaml_config)
     # check if the yaml schema is correct
-    check_yaml_schema(yaml_config)
+    check_yaml_schema(yaml_config_dict)
 
     # generate all the YAML configs
-    config_dict = YamlConfigDict(**yaml_config)
-    data_configs = generate_data_configs(config_dict)
+    data_configs = generate_data_configs(yaml_config_dict)
 
     # dump all the YAML configs into files
     dump_yaml_list_into_files(data_configs, out_dir_path, "test")

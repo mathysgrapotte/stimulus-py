@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 import numpy as np
-import polars as pl
 
 # Constants
 SPLIT_SIZE = 3  # Number of splits (train/val/test)
@@ -29,7 +28,7 @@ class AbstractSplitter(ABC):
         self.seed = seed
 
     @abstractmethod
-    def get_split_indexes(self, data: pl.DataFrame) -> list:
+    def get_split_indexes(self, data: dict) -> tuple[list, list, list]:
         """Splits the data. Always return indices mapping to the original list.
 
         This is an abstract method that should be implemented by the child class.
@@ -61,7 +60,7 @@ class AbstractSplitter(ABC):
 class RandomSplit(AbstractSplitter):
     """This splitter randomly splits the data."""
 
-    def __init__(self, split: Optional[list] = None, seed: Optional[float] = None) -> None:
+    def __init__(self, split: Optional[list] = None, seed: int = 42) -> None:
         """Initialize the random splitter.
 
         Args:

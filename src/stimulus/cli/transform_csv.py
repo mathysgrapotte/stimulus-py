@@ -4,7 +4,7 @@
 import argparse
 import json
 
-from stimulus.data.csv import CsvProcessing
+from stimulus.data.data_handlers import CsvProcessing
 from stimulus.utils.launch_utils import get_experiment
 
 

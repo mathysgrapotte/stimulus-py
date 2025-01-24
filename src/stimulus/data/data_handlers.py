@@ -93,7 +93,7 @@ class DatasetManager:
 
         return {"input": input_columns, "label": label_columns, "meta": meta_columns}
 
-    def _load_config(self, config_path: str) -> dict:
+    def _load_config(self, config_path: str) -> yaml_data.YamlConfigDict:
         """Loads and parses a YAML configuration file.
 
         Args:
@@ -111,7 +111,7 @@ class DatasetManager:
         with open(config_path) as file:
             return yaml_data.YamlSubConfigDict(**yaml.safe_load(file))
 
-    def get_split_columns(self) -> str:
+    def get_split_columns(self) -> list[str]:
         """Get the columns that are used for splitting."""
         return self.config.split.split_input_columns
 
@@ -273,18 +273,15 @@ class DatasetHandler:
         config_path: str,
         csv_path: str,
     ) -> None:
-        """Initialize the DatasetHandler with required loaders and config.
+        """Initialize the DatasetHandler with required config.
 
         Args:
-            encoder_loader (experiments.EncoderLoader): Loader for getting column encoders.
-            transform_loader (experiments.TransformLoader): Loader for getting data transformations.
-            split_loader (experiments.SplitLoader): Loader for getting dataset split configurations.
             config_path (str): Path to the dataset configuration file.
             csv_path (str): Path to the CSV data file.
-            split (int): The split to load, 0 is train, 1 is validation, 2 is test.
         """
         self.dataset_manager = DatasetManager(config_path)
         self.columns = self.read_csv_header(csv_path)
+        self.data = self.load_csv(csv_path)
 
     def read_csv_header(self, csv_path: str) -> list:
         """Get the column names from the header of the CSV file.
@@ -344,10 +341,8 @@ class DatasetProcessor(DatasetHandler):
         An error exception is raised if the split column is already present in the csv file. This behaviour can be overriden by setting force=True.
 
         Args:
-            config (dict) : the dictionary containing  the following keys:
-                            "name" (str)        : the split_function name, as defined in the splitters class and experiment.
-                            "parameters" (dict) : the split_function specific optional parameters, passed here as a dict with keys named as in the split function definition.
-            force (bool) : If True, the split column present in the csv file will be overwritten.
+            split_manager (SplitManager): Manager for handling dataset splitting
+            force (bool): If True, the split column present in the csv file will be overwritten.
         """
         if ("split" in self.columns) and (not force):
             raise ValueError(
@@ -389,7 +384,7 @@ class DatasetProcessor(DatasetHandler):
         # set the np seed
         np.random.seed(seed)
 
-        label_keys = self.dataset_manager.get_label_columns()["label"]
+        label_keys = self.dataset_manager.column_categories["label"]
         for key in label_keys:
             self.data = self.data.with_columns(pl.Series(key, np.random.permutation(list(self.data[key]))))
 
@@ -438,9 +433,9 @@ class DatasetLoader(DatasetHandler):
         meta_data = {key: self.data[key].to_list() for key in meta_columns}
         return input_data, label_data, meta_data
 
-    def get_all_items_and_length(self) -> tuple[dict, dict, dict, int]:
+    def get_all_items_and_length(self) -> tuple[tuple[dict, dict, dict], int]:
         """Get the full dataset as three separate dictionaries for inputs, labels and metadata, and the length of the data."""
-        return self.get_all_items(), len(self)
+        return self.get_all_items(), len(self.data)
 
     def load_csv_per_split(self, csv_path: str, split: int) -> pl.DataFrame:
         """Load the part of csv file that has the specified split value.
@@ -461,7 +456,7 @@ class DatasetLoader(DatasetHandler):
         """Return the length of the first list in input, assumes that all are the same length."""
         return len(self.data)
 
-    def __getitem__(self, idx: Any) -> dict:
+    def __getitem__(self, idx: Any) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor], dict[str, list]]:
         """Get the data at a given index, and encodes the input and label, leaving meta as it is.
 
         Args:
@@ -471,7 +466,6 @@ class DatasetLoader(DatasetHandler):
         if isinstance(idx, slice):
             data_at_index = self.data.slice(idx.start or 0, idx.stop or len(self.data))
         elif isinstance(idx, int):
-            # Convert single row to DataFrame to maintain consistent interface
             data_at_index = self.data.slice(idx, idx + 1)
         else:
             data_at_index = self.data[idx]

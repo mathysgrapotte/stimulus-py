@@ -33,7 +33,7 @@ class EncoderLoader:
         """Build the loader from a config dictionary.
 
         Args:
-            config (yaml_data.YamlSubConfigDict): Configuration dictionary containing field names (column_name) and their encoder specifications.
+            column_config (yaml_data.YamlColumns): Configuration dictionary containing field names (column_name) and their encoder specifications.
         """
         for field in column_config:
             encoder = self.get_encoder(field.encoder[0].name, field.encoder[0].params)
@@ -104,6 +104,7 @@ class TransformLoader:
 
         Args:
             transformation_name (str): The name of the transformer to get
+            transformation_params (Optional[dict]): Parameters for the transformer
 
         Returns:
             Any: The transformer function for the specified transformation
@@ -137,13 +138,14 @@ class TransformLoader:
         if not hasattr(self, field_name):
             setattr(self, field_name, {data_transformer.__class__.__name__: data_transformer})
         else:
-            self.field_name[data_transformer.__class__.__name__] = data_transformer
+            field_value = getattr(self, field_name)
+            field_value[data_transformer.__class__.__name__] = data_transformer
 
     def initialize_column_data_transformers_from_config(self, transform_config: yaml_data.YamlTransform) -> None:
         """Build the loader from a config dictionary.
 
         Args:
-            config (yaml_data.YamlSubConfigDict): Configuration dictionary containing transforms configurations.
+            transform_config (yaml_data.YamlTransform): Configuration dictionary containing transforms configurations.
 
         Example:
             Given a YAML config like:
@@ -190,9 +192,6 @@ class SplitLoader:
     def get_function_split(self) -> Any:
         """Gets the function for splitting the data.
 
-        Args:
-            split_method (str): Name of the split method to use
-
         Returns:
             Any: The split function for the specified method
 
@@ -212,6 +211,7 @@ class SplitLoader:
 
         Args:
             splitter_name (str): The name of the splitter to get
+            splitter_params (Optional[dict]): Parameters for the splitter
 
         Returns:
             Any: The splitter function for the specified splitter
@@ -231,7 +231,6 @@ class SplitLoader:
         """Sets the splitter as an attribute of the loader.
 
         Args:
-            field_name (str): The name of the field to set the splitter for
             splitter (Any): The splitter to set
         """
         self.split = splitter
@@ -240,7 +239,7 @@ class SplitLoader:
         """Build the loader from a config dictionary.
 
         Args:
-            config (dict): Configuration dictionary containing split configurations.
+            split_config (yaml_data.YamlSplit): Configuration dictionary containing split configurations.
         """
         splitter = self.get_splitter(split_config.split_method, split_config.params)
         self.set_splitter_as_attribute(splitter)

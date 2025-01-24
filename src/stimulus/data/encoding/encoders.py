@@ -33,24 +33,24 @@ class AbstractEncoder(ABC):
         This is an abstract method, child classes should overwrite it.
 
         Args:
-            data (any): a single data point
+            data (Any): a single data point
 
         Returns:
-            encoded_data_point (any): Òthe encoded data point
+            encoded_data_point (Any): the encoded data point
         """
         raise NotImplementedError
 
     @abstractmethod
-    def encode_all(self, data: list) -> np.array:
+    def encode_all(self, data: list[Any]) -> torch.Tensor:
         """Encode a list of data points.
 
         This is an abstract method, child classes should overwrite it.
 
         Args:
-            data (list): a list of data points
+            data (list[Any]): a list of data points
 
         Returns:
-            encoded_data (np.array): encoded data points
+            encoded_data (torch.Tensor): encoded data points
         """
         raise NotImplementedError
 
@@ -61,21 +61,21 @@ class AbstractEncoder(ABC):
         This is an abstract method, child classes should overwrite it.
 
         Args:
-            data (any): a single encoded data point
+            data (Any): a single encoded data point
 
         Returns:
-            decoded_data_point (any): the decoded data point
+            decoded_data_point (Any): the decoded data point
         """
         raise NotImplementedError
 
-    def encode_multiprocess(self, data: list) -> list:
+    def encode_multiprocess(self, data: list[Any]) -> list[Any]:
         """Helper function for encoding the data using multiprocessing.
 
         Args:
-            data (list): a list of data points
+            data (list[Any]): a list of data points
 
         Returns:
-            encoded_data (list): encoded data points
+            encoded_data (list[Any]): encoded data points
         """
         with mp.Pool(mp.cpu_count()) as pool:
             return pool.map(self.encode, data)
@@ -89,9 +89,8 @@ class TextOneHotEncoder(AbstractEncoder):
 
     Attributes:
         alphabet (str): the alphabet to one hot encode the data with.
-        convert_lowercase (bool): whether the encoder would convert the sequence (and alphabet) to lowercase
-          or not. Default = False
-        padding (bool): whether to pad the sequences with zero or not. Default = False
+        convert_lowercase (bool): whether to convert the sequence and alphabet to lowercase. Default is False.
+        padding (bool): whether to pad the sequences with zeros. Default is False.
         encoder (OneHotEncoder): preprocessing.OneHotEncoder object initialized with self.alphabet
 
     Methods:
@@ -129,14 +128,14 @@ class TextOneHotEncoder(AbstractEncoder):
         )  # handle_unknown='ignore' unsures that a vector of zeros is returned for unknown characters, such as 'Ns' in DNA sequences
         self.encoder.fit(np.array(list(alphabet)).reshape(-1, 1))
 
-    def _sequence_to_array(self, sequence: str) -> np.array:
+    def _sequence_to_array(self, sequence: str) -> np.ndarray:
         """This function transforms the given sequence to an array.
 
         Args:
             sequence (str): a sequence of characters.
 
         Returns:
-            sequence_array (np.array): the sequence as a numpy array
+            sequence_array (np.ndarray): the sequence as a numpy array
 
         Raises:
             TypeError: If the input data is not a string.
@@ -212,7 +211,7 @@ class TextOneHotEncoder(AbstractEncoder):
         Unknown characters are represented by a vector of zeros.
 
         Args:
-            data (Union[list, str]): list of sequences or a single sequence
+            data (Union[str, list[str]]): list of sequences or a single sequence
 
         Returns:
             encoded_data (torch.Tensor): one hot encoded sequences
@@ -242,7 +241,7 @@ class TextOneHotEncoder(AbstractEncoder):
             return torch.stack([encoded_data])
         if isinstance(data, list):
             # TODO instead maybe we can run encode_multiprocess when data size is larger than a certain threshold.
-            encoded_data = self.encode_multiprocess(data)
+            encoded_data = self.encode_multiprocess(data)  # type: ignore[assignment]
         else:
             error_msg = f"Expected list or string input for data, got {type(data).__name__}"
             logger.error(error_msg)
@@ -251,7 +250,7 @@ class TextOneHotEncoder(AbstractEncoder):
         # handle padding
         if self.padding:
             max_length = max([len(d) for d in encoded_data])
-            encoded_data = [np.pad(d, ((0, max_length - len(d)), (0, 0))) for d in encoded_data]
+            encoded_data = [np.pad(d, ((0, max_length - len(d)), (0, 0))) for d in encoded_data]  # type: ignore[assignment]
         else:
             lengths = {len(d) for d in encoded_data}
             if len(lengths) > 1:
@@ -272,7 +271,7 @@ class TextOneHotEncoder(AbstractEncoder):
         NOTE that when decoding 3D shape tensor, it assumes all sequences have the same length.
 
         Returns:
-            Union[str, List[str]]: Single sequence string or list of sequence strings
+            Union[str, list[str]]: Single sequence string or list of sequence strings
 
         Raises:
             TypeError: If the input data is not a 2D or 3D tensor
@@ -302,7 +301,11 @@ class TextOneHotEncoder(AbstractEncoder):
 
 
 class NumericEncoder(AbstractEncoder):
-    """Encoder for float/int data."""
+    """Encoder for float/int data.
+
+    Attributes:
+        dtype (torch.dtype): The data type of the encoded data. Default = torch.float32 (32-bit floating point)
+    """
 
     def __init__(self, dtype: torch.dtype = torch.float32) -> None:
         """Initialize the NumericEncoder class.
@@ -318,20 +321,20 @@ class NumericEncoder(AbstractEncoder):
         This method takes as input a single data point, should be mappable to a single output.
 
         Args:
-            data (float or int): a single data point
+            data (float): a single data point
 
         Returns:
             encoded_data_point (torch.Tensor): the encoded data point
         """
-        return self.encode_all(data)  # there is no difference in this case
+        return self.encode_all([data])
 
-    def encode_all(self, data: float | list[float]) -> torch.Tensor:
+    def encode_all(self, data: list[float]) -> torch.Tensor:
         """Encodes the data.
 
         This method takes as input a list of data points, or a single float, and returns a torch.tensor.
 
         Args:
-            data (float or int): a list of data points or a single data point
+            data (list[float]): a list of data points or a single data point
 
         Returns:
             encoded_data (torch.Tensor): the encoded data
@@ -351,15 +354,15 @@ class NumericEncoder(AbstractEncoder):
             data (torch.Tensor): the encoded data
 
         Returns:
-            decoded_data (List[float]): the decoded data
+            decoded_data (list[float]): the decoded data
         """
         return data.cpu().numpy().tolist()
 
-    def _check_input_dtype(self, data: Union[list[float], list[int]]) -> None:
+    def _check_input_dtype(self, data: list[float]) -> None:
         """Check if the input data is int or float data.
 
         Args:
-            data (float or int): a list of float or integer data points
+            data (list[float]): a list of float data points
 
         Raises:
             ValueError: If the input data contains a non-integer or non-float data point
@@ -369,11 +372,11 @@ class NumericEncoder(AbstractEncoder):
             logger.error(err_msg)
             raise ValueError(err_msg)
 
-    def _warn_float_is_converted_to_int(self, data: Union[list[float], list[int]]) -> None:
+    def _warn_float_is_converted_to_int(self, data: list[float]) -> None:
         """Warn if float data is encoded into int data.
 
         Args:
-            data (float or int): a list of float or integer data points
+            data (list[float]): a list of float data points
         """
         if any(isinstance(d, float) for d in data) and (
             self.dtype in [torch.int, torch.int8, torch.int16, torch.int32, torch.int64]
@@ -387,17 +390,17 @@ class StrClassificationEncoder(AbstractEncoder):
     When scale is set to True, the labels are scaled to be between 0 and 1.
 
     Attributes:
-        None
+        scale (bool): Whether to scale the labels to be between 0 and 1. Default = False
 
     Methods:
         encode(data: str) -> int:
             Raises a NotImplementedError, as encoding a single string is not meaningful in this context.
-        encode_all(data: List[str]) -> torch.tensor:
+        encode_all(data: list[str]) -> torch.tensor:
             Encodes an entire list of string data into a numeric representation using LabelEncoder and
             returns a torch tensor. Ensures that the provided data items are valid strings prior to encoding.
         decode(data: Any) -> Any:
             Raises a NotImplementedError, as decoding is not supported with the current design.
-        _check_dtype(data: List[str]) -> None:
+        _check_dtype(data: list[str]) -> None:
             Validates that all items in the data list are strings, raising a ValueError otherwise.
     """
 
@@ -417,14 +420,14 @@ class StrClassificationEncoder(AbstractEncoder):
         """
         raise NotImplementedError("Encoding a single string does not make sense. Use encode_all instead.")
 
-    def encode_all(self, data: list[str]) -> torch.tensor:
+    def encode_all(self, data: Union[str, list[str]]) -> torch.Tensor:
         """Encodes the data.
 
         This method takes as input a list of data points, should be mappable to a single output, using LabelEncoder from scikit learn and returning a numpy array.
         For more info visit : https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.LabelEncoder.html
 
         Args:
-            data (List[str]): a list of strings
+            data (Union[str, list[str]]): a list of strings or single string
 
         Returns:
             encoded_data (torch.tensor): the encoded data
@@ -449,7 +452,7 @@ class StrClassificationEncoder(AbstractEncoder):
         """Check if the input data is string data.
 
         Args:
-            data (List[str]): a list of strings
+            data (list[str]): a list of strings
 
         Raises:
             ValueError: If the input data is not a string
@@ -471,7 +474,6 @@ class NumericRankEncoder(AbstractEncoder):
         encode_all: encodes a list of data points into a torch.tensor
         decode: decodes a single data point
         _check_input_dtype: checks if the input data is int or float data
-        _warn_float_is_converted_to_int: warns if float data is encoded into
     """
 
     def __init__(self, *, scale: bool = False) -> None:
@@ -486,15 +488,14 @@ class NumericRankEncoder(AbstractEncoder):
         """Returns an error since encoding a single float does not make sense."""
         raise NotImplementedError("Encoding a single float does not make sense. Use encode_all instead.")
 
-    def encode_all(self, data: Union[list[float], list[int]]) -> torch.Tensor:
+    def encode_all(self, data: list[Union[int, float]]) -> torch.Tensor:
         """Encodes the data.
 
         This method takes as input a list of data points, and returns the ranks of the data points.
         The ranks are normalized to be between 0 and 1, when scale is set to True.
 
         Args:
-            data (Union[List[float], List[int]]): a list of numeric values
-            scale (bool): whether to scale the ranks to be between 0 and 1. Default = False
+            data (list[Union[int, float]]): a list of numeric values
 
         Returns:
             encoded_data (torch.Tensor): the encoded data
@@ -505,8 +506,8 @@ class NumericRankEncoder(AbstractEncoder):
 
         # Get ranks (0 is lowest, n-1 is highest)
         # and normalize to be between 0 and 1
-        data = np.array(data)
-        ranks = np.argsort(np.argsort(data))
+        array_data: np.ndarray = np.array(data)
+        ranks: np.ndarray = np.argsort(np.argsort(array_data))
         if self.scale:
             ranks = ranks / max(len(ranks) - 1, 1)
         return torch.tensor(ranks)
@@ -515,11 +516,11 @@ class NumericRankEncoder(AbstractEncoder):
         """Returns an error since decoding does not make sense without encoder information, which is not yet supported."""
         raise NotImplementedError("Decoding is not yet supported for NumericRank.")
 
-    def _check_input_dtype(self, data: list) -> None:
+    def _check_input_dtype(self, data: list[Union[int, float]]) -> None:
         """Check if the input data is int or float data.
 
         Args:
-            data (int or float): a single data point or a list of data points
+            data (list[Union[int, float]]): a list of numeric values
 
         Raises:
             ValueError: If the input data is not a float
