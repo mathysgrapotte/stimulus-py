@@ -23,7 +23,7 @@ def get_args() -> argparse.Namespace:
     """Get the arguments when using from the command line."""
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
-        "-j",
+        "-y",
         "--yaml",
         type=str,
         required=True,
