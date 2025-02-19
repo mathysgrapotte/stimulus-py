@@ -16,9 +16,7 @@ class ColumnsEncoder(BaseModel):
     """Model for column encoder configuration."""
 
     name: str
-    params: Optional[
-        dict[str, Union[str, list[Any]]]
-    ]  # Allow both string and list values
+    params: Optional[dict[str, Union[str, list[Any]]]]  # Allow both string and list values
 
 
 class Columns(BaseModel):
@@ -34,9 +32,7 @@ class TransformColumnsTransformation(BaseModel):
     """Model for column transformation configuration."""
 
     name: str
-    params: Optional[
-        dict[str, Union[list[Any], float]]
-    ]  # Allow both list and float values
+    params: Optional[dict[str, Union[list[Any], float]]]  # Allow both list and float values
 
 
 class TransformColumns(BaseModel):
@@ -55,7 +51,8 @@ class Transform(BaseModel):
     @field_validator("columns")
     @classmethod
     def validate_param_lists_across_columns(
-        cls, columns: list[TransformColumns]
+        cls,
+        columns: list[TransformColumns],
     ) -> list[TransformColumns]:
         """Validate that parameter lists across columns have consistent lengths.
 
@@ -143,7 +140,8 @@ class SplitSchema(BaseModel):
 
 
 def extract_transform_parameters_at_index(
-    transform: Transform, index: int = 0
+    transform: Transform,
+    index: int = 0,
 ) -> Transform:
     """Get a transform with parameters at the specified index.
 
@@ -193,15 +191,9 @@ def expand_transform_parameter_combinations(
     for column in transform.columns:
         for transformation in column.transformations:
             if transformation.params:
-                list_lengths = [
-                    len(v)
-                    for v in transformation.params.values()
-                    if isinstance(v, list) and len(v) > 1
-                ]
+                list_lengths = [len(v) for v in transformation.params.values() if isinstance(v, list) and len(v) > 1]
                 if list_lengths:
-                    max_length = list_lengths[
-                        0
-                    ]  # All lists have same length due to validator
+                    max_length = list_lengths[0]  # All lists have same length due to validator
                     break
 
     # Generate a transform for each index
@@ -325,7 +317,7 @@ def generate_split_transform_configs(
                 columns=config.columns,
                 transforms=transform,
                 split=config.split,
-            )
+            ),
         )
     return split_transform_config
 
@@ -335,7 +327,7 @@ def dump_yaml_list_into_files(
     directory_path: str,
     base_name: str,
 ) -> None:
-    """Dumps a list of YAML configurations into separate files with custom formatting."""
+    """Dumps a list of configurations into separate files with custom formatting."""
     # Create a new class attribute rather than assigning to the method
     # Remove this line since we'll add ignore_aliases to CustomDumper instead
 
@@ -350,11 +342,15 @@ def dump_yaml_list_into_files(
                 return dumper.represent_scalar("tag:yaml.org,2002:null", "")
             if isinstance(data[0], dict):
                 return dumper.represent_sequence(
-                    "tag:yaml.org,2002:seq", data, flow_style=False
+                    "tag:yaml.org,2002:seq",
+                    data,
+                    flow_style=False,
                 )
             if isinstance(data[0], list):
                 return dumper.represent_sequence(
-                    "tag:yaml.org,2002:seq", data, flow_style=True
+                    "tag:yaml.org,2002:seq",
+                    data,
+                    flow_style=True,
                 )
         return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
 
@@ -372,7 +368,10 @@ def dump_yaml_list_into_files(
                 super().write_line_break(_data)
 
         def increase_indent(
-            self, *, flow: bool = False, indentless: bool = False
+            self,
+            *,
+            flow: bool = False,
+            indentless: bool = False,
         ) -> None:  # type: ignore[override]
             """Ensure consistent indentation by preventing indentless sequences."""
             return super().increase_indent(
@@ -396,30 +395,21 @@ def dump_yaml_list_into_files(
                         processed_dict[key] = []
                         for encoder in value:
                             processed_encoder = dict(encoder)
-                            if (
-                                "params" not in processed_encoder
-                                or not processed_encoder["params"]
-                            ):
+                            if "params" not in processed_encoder or not processed_encoder["params"]:
                                 processed_encoder["params"] = {}
                             processed_dict[key].append(processed_encoder)
                     elif key == "transformations" and isinstance(value, list):
                         processed_dict[key] = []
                         for transformation in value:
                             processed_transformation = dict(transformation)
-                            if (
-                                "params" not in processed_transformation
-                                or not processed_transformation["params"]
-                            ):
+                            if "params" not in processed_transformation or not processed_transformation["params"]:
                                 processed_transformation["params"] = {}
                             processed_dict[key].append(processed_transformation)
                     elif isinstance(value, dict):
                         processed_dict[key] = fix_params(value)
                     elif isinstance(value, list):
                         processed_dict[key] = [
-                            fix_params(list_item)
-                            if isinstance(list_item, dict)
-                            else list_item
-                            for list_item in value
+                            fix_params(list_item) if isinstance(list_item, dict) else list_item for list_item in value
                         ]
                     else:
                         processed_dict[key] = value
