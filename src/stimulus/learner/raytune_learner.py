@@ -20,8 +20,8 @@ from stimulus.data.handlertorch import TorchDataset
 from stimulus.data.loaders import EncoderLoader
 from stimulus.learner.predict import PredictWrapper
 from stimulus.utils.generic_utils import set_general_seeds
-from stimulus.utils.yaml_model_schema import RayTuneModel
 from stimulus.utils.yaml_data import SplitTransformDict
+from stimulus.utils.yaml_model_schema import RayTuneModel
 
 
 class CheckpointDict(TypedDict):
@@ -78,7 +78,7 @@ class TuneWrapper:
             if tune_run_name is not None
             else "TuneModel_"
             + datetime.datetime.now(tz=datetime.timezone.utc).strftime(
-                "%Y-%m-%d_%H-%M-%S"
+                "%Y-%m-%d_%H-%M-%S",
             ),
             storage_path=ray_results_dir,
             checkpoint_config=train.CheckpointConfig(checkpoint_at_end=True),
@@ -99,7 +99,7 @@ class TuneWrapper:
             if tune_run_name is not None
             else "TuneModel_"
             + datetime.datetime.now(tz=datetime.timezone.utc).strftime(
-                "%Y-%m-%d_%H-%M-%S"
+                "%Y-%m-%d_%H-%M-%S",
             ),
         )
         self.config["_debug"] = debug
@@ -138,7 +138,7 @@ class TuneWrapper:
                 )
         except KeyError as err:
             logging.warning(
-                f"KeyError: {err}, no GPU resources available in the cluster: {cluster_res}"
+                f"KeyError: {err}, no GPU resources available in the cluster: {cluster_res}",
             )
 
         if self.cpu_per_trial > cluster_res["CPU"] and not autoscaler:
@@ -147,7 +147,7 @@ class TuneWrapper:
             )
 
         logging.info(
-            f"PER_TRIAL resources ->  GPU: {self.gpu_per_trial} CPU: {self.cpu_per_trial}"
+            f"PER_TRIAL resources ->  GPU: {self.gpu_per_trial} CPU: {self.cpu_per_trial}",
         )
 
         # Pre-load and encode datasets once, then put them in Ray's object store
@@ -304,20 +304,18 @@ class TuneModel(Trainable):
             "spearmanr",
         ]  # TODO maybe we report only a subset of metrics, given certain criteria (eg. if classification or regression)
         predict_val = PredictWrapper(
-            self.model, self.validation, loss_dict=self.loss_dict
+            self.model,
+            self.validation,
+            loss_dict=self.loss_dict,
         )
         predict_train = PredictWrapper(
-            self.model, self.training, loss_dict=self.loss_dict
+            self.model,
+            self.training,
+            loss_dict=self.loss_dict,
         )
         return {
-            **{
-                "val_" + metric: value
-                for metric, value in predict_val.compute_metrics(metrics).items()
-            },
-            **{
-                "train_" + metric: value
-                for metric, value in predict_train.compute_metrics(metrics).items()
-            },
+            **{"val_" + metric: value for metric, value in predict_val.compute_metrics(metrics).items()},
+            **{"train_" + metric: value for metric, value in predict_train.compute_metrics(metrics).items()},
         }
 
     # type: ignore[override]
@@ -333,16 +331,18 @@ class TuneModel(Trainable):
             return
         checkpoint_dir = checkpoint["checkpoint_dir"]
         self.model = safe_load_model(
-            self.model, os.path.join(checkpoint_dir, "model.safetensors")
+            self.model,
+            os.path.join(checkpoint_dir, "model.safetensors"),
         )
         self.optimizer.load_state_dict(
-            torch.load(os.path.join(checkpoint_dir, "optimizer.pt"))
+            torch.load(os.path.join(checkpoint_dir, "optimizer.pt")),
         )
 
     def save_checkpoint(self, checkpoint_dir: str) -> dict[Any, Any]:
         """Save model and optimizer state to checkpoint."""
         safe_save_model(self.model, os.path.join(checkpoint_dir, "model.safetensors"))
         torch.save(
-            self.optimizer.state_dict(), os.path.join(checkpoint_dir, "optimizer.pt")
+            self.optimizer.state_dict(),
+            os.path.join(checkpoint_dir, "optimizer.pt"),
         )
         return {"checkpoint_dir": checkpoint_dir}
