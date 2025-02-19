@@ -183,7 +183,7 @@ def main(
 
     encoder_loader = loaders.EncoderLoader()
     encoder_loader.initialize_column_encoders_from_config(
-        column_config=data_config.columns
+        column_config=data_config.columns,
     )
 
     model_class = launch_utils.import_class_from_file(model_path)
