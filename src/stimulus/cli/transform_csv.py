@@ -7,7 +7,7 @@ import yaml
 
 from stimulus.data.data_handlers import DatasetProcessor, TransformManager
 from stimulus.data.loaders import TransformLoader
-from stimulus.utils.yaml_data import YamlSplitConfigDict
+from stimulus.utils.yaml_data import SplitConfigDict
 
 
 def get_args() -> argparse.Namespace:
@@ -55,7 +55,7 @@ def main(data_csv: str, config_yaml: str, out_path: str) -> None:
     # initialize the transform manager
     transform_config = processor.dataset_manager.config.transforms
     with open(config_yaml) as f:
-        yaml_config = YamlSplitConfigDict(**yaml.safe_load(f))
+        yaml_config = SplitConfigDict(**yaml.safe_load(f))
     transform_loader = TransformLoader(seed=yaml_config.global_params.seed)
     print(transform_config)
     transform_loader.initialize_column_data_transformers_from_config(transform_config)
