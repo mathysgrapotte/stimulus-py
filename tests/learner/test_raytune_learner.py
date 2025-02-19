@@ -10,7 +10,7 @@ import yaml
 from stimulus.data.handlertorch import TorchDataset
 from stimulus.data.loaders import EncoderLoader
 from stimulus.learner.raytune_learner import TuneWrapper
-from stimulus.utils.yaml_data import YamlSplitConfigDict, YamlSplitTransformDict
+from stimulus.utils.yaml_data import SplitConfigDict, SplitTransformDict
 from stimulus.utils.yaml_model_schema import Model, RayTuneModel, YamlRayConfigLoader
 from tests.test_model import titanic_model
 
@@ -30,7 +30,7 @@ def encoder_loader() -> EncoderLoader:
         data_config = yaml.safe_load(file)
     encoder_loader = EncoderLoader()
     encoder_loader.initialize_column_encoders_from_config(
-        YamlSplitTransformDict(**data_config).columns
+        SplitTransformDict(**data_config).columns
     )
     return encoder_loader
 
@@ -57,9 +57,9 @@ def test_tunewrapper_init(
     ray.init(ignore_reinit_error=True)
 
     try:
-        data_config: YamlSplitTransformDict
+        data_config: SplitTransformDict
         with open("tests/test_data/titanic/titanic_sub_config.yaml") as f:
-            data_config = YamlSplitTransformDict(**yaml.safe_load(f))
+            data_config = SplitTransformDict(**yaml.safe_load(f))
 
         tune_wrapper = TuneWrapper(
             model_config=ray_config_loader,
@@ -68,8 +68,7 @@ def test_tunewrapper_init(
             data_config=data_config,
             encoder_loader=encoder_loader,
             seed=42,
-            ray_results_dir=os.path.abspath(
-                "tests/test_data/titanic/ray_results"),
+            ray_results_dir=os.path.abspath("tests/test_data/titanic/ray_results"),
             tune_run_name="test_run",
             debug=False,
             autoscaler=False,
@@ -83,8 +82,7 @@ def test_tunewrapper_init(
         if os.path.exists("tests/test_data/titanic/ray_results"):
             import shutil
 
-            shutil.rmtree("tests/test_data/titanic/ray_results",
-                          ignore_errors=True)
+            shutil.rmtree("tests/test_data/titanic/ray_results", ignore_errors=True)
 
 
 def test_tune_wrapper_tune(
@@ -98,9 +96,9 @@ def test_tune_wrapper_tune(
     ray.init(ignore_reinit_error=True)
 
     try:
-        data_config: YamlSplitTransformDict
+        data_config: SplitTransformDict
         with open("tests/test_data/titanic/titanic_sub_config.yaml") as f:
-            data_config = YamlSplitTransformDict(**yaml.safe_load(f))
+            data_config = SplitTransformDict(**yaml.safe_load(f))
 
         tune_wrapper = TuneWrapper(
             model_config=ray_config_loader,
@@ -109,8 +107,7 @@ def test_tune_wrapper_tune(
             data_config=data_config,
             encoder_loader=encoder_loader,
             seed=42,
-            ray_results_dir=os.path.abspath(
-                "tests/test_data/titanic/ray_results"),
+            ray_results_dir=os.path.abspath("tests/test_data/titanic/ray_results"),
             tune_run_name="test_run",
             debug=False,
             autoscaler=False,
@@ -125,5 +122,4 @@ def test_tune_wrapper_tune(
         if os.path.exists("tests/test_data/titanic/ray_results"):
             import shutil
 
-            shutil.rmtree("tests/test_data/titanic/ray_results",
-                          ignore_errors=True)
+            shutil.rmtree("tests/test_data/titanic/ray_results", ignore_errors=True)
