@@ -261,7 +261,7 @@ def generate_split_configs(config: ConfigDict) -> list[SplitConfigDict]:
             parameter lists and multiple splits.
 
     Returns:
-        list[YamlSubConfigDict]: A list of data configurations, where each
+        list[SubConfigDict]: A list of data configurations, where each
             config has a list of parameters and one split configuration. The
             length will be the product of the number of parameter combinations
             and the number of splits.
@@ -308,13 +308,13 @@ def generate_split_transform_configs(
             a split with transforms with parameters lists
 
     Returns:
-        list[YamlSubConfigTransformDict]: A list of data configurations, where each
+        list[SubConfigTransformDict]: A list of data configurations, where each
             config has a list of parameters and one split configuration. The
             length will be the product of the number of parameter combinations
             and the number of splits.
     """
     if isinstance(config, dict) and not isinstance(yaml_config, SplitConfigDict):
-        raise TypeError("Input must be a list of YamlSubConfigDict")
+        raise TypeError("Input must be a list of SubConfigDict")
 
     sub_transforms = expand_transform_list_combinations(config.transforms)
     split_transform_config: list[SplitTransformDict] = []
