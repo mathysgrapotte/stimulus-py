@@ -7,7 +7,7 @@ import yaml
 
 from stimulus.data.data_handlers import DatasetProcessor, SplitManager
 from stimulus.data.loaders import SplitLoader
-from stimulus.utils.yaml_data import YamlSplitConfigDict
+from stimulus.utils.yaml_data import SplitConfigDict
 
 
 def get_args() -> argparse.Namespace:
@@ -66,7 +66,7 @@ def main(
     # create a split manager from the config
     split_config = processor.dataset_manager.config.split
     with open(config_yaml) as f:
-        yaml_config = YamlSplitConfigDict(**yaml.safe_load(f))
+        yaml_config = SplitConfigDict(**yaml.safe_load(f))
     split_loader = SplitLoader(seed=yaml_config.global_params.seed)
     split_loader.initialize_splitter_from_config(split_config)
     split_manager = SplitManager(split_loader)
