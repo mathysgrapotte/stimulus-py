@@ -46,7 +46,7 @@ from stimulus.utils.yaml_data import (
     YamlSplitTransformDict,
     YamlTransform,
     YamlTransformColumns,
-    YamlTransformColumnsTransformation,
+    TransformColumnsTransformation,
 )
 from stimulus.utils.yaml_model_schema import (
     CustomTunableParameter,
@@ -88,5 +88,5 @@ YamlData: TypeAlias = (
     | YamlSplitConfigDict
     | YamlTransform
     | YamlTransformColumns
-    | YamlTransformColumnsTransformation
+    | TransformColumnsTransformation
 )
