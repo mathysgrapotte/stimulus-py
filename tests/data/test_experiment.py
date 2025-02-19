@@ -23,18 +23,18 @@ def dna_experiment_config_path() -> str:
 @pytest.fixture
 def dna_experiment_sub_yaml(
     dna_experiment_config_path: str,
-) -> yaml_data.YamlConfigDict:
+) -> yaml_data.ConfigDict:
     """Get a sub-configuration from the DNA experiment config.
 
     Args:
         dna_experiment_config_path: Path to the DNA experiment config file
 
     Returns:
-        yaml_data.YamlConfigDict: First generated sub-configuration
+        yaml_data.ConfigDict: First generated sub-configuration
     """
     with open(dna_experiment_config_path) as f:
         yaml_dict = yaml.safe_load(f)
-        yaml_config = yaml_data.YamlConfigDict(**yaml_dict)
+        yaml_config = yaml_data.ConfigDict(**yaml_dict)
 
     yaml_split_configs = yaml_data.generate_split_configs(yaml_config)
     yaml_split_transform_configs = yaml_data.generate_split_transform_configs(
@@ -103,7 +103,7 @@ def test_set_encoder_as_attribute(
 
 
 def test_build_experiment_class_encoder_dict(
-    dna_experiment_sub_yaml: yaml_data.YamlConfigDict,
+    dna_experiment_sub_yaml: yaml_data.ConfigDict,
 ) -> None:
     """Test the build_experiment_class_encoder_dict method.
 
@@ -124,8 +124,7 @@ def test_get_data_transformer() -> None:
     """Test the get_data_transformer method of the TransformLoader class."""
     experiment = loaders.TransformLoader()
     transformer = experiment.get_data_transformer("ReverseComplement")
-    assert isinstance(
-        transformer, data_transformation_generators.ReverseComplement)
+    assert isinstance(transformer, data_transformation_generators.ReverseComplement)
 
 
 def test_set_data_transformer_as_attribute() -> None:
@@ -138,7 +137,7 @@ def test_set_data_transformer_as_attribute() -> None:
 
 
 def test_initialize_column_data_transformers_from_config(
-    dna_experiment_sub_yaml: yaml_data.YamlConfigDict,
+    dna_experiment_sub_yaml: yaml_data.ConfigDict,
 ) -> None:
     """Test initializing column data transformers from config.
 
@@ -158,7 +157,7 @@ def test_initialize_column_data_transformers_from_config(
 
 
 def test_initialize_splitter_from_config(
-    dna_experiment_sub_yaml: yaml_data.YamlConfigDict,
+    dna_experiment_sub_yaml: yaml_data.ConfigDict,
 ) -> None:
     """Test initializing splitter from configuration.
 
