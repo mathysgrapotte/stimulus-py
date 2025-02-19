@@ -50,11 +50,11 @@ class DatasetManager:
 
     def __init__(
         self,
-        config_dict: yaml_data.YamlSplitConfigDict,
+        config_dict: yaml_data.SplitConfigDict,
     ) -> None:
         """Initialize the DatasetManager."""
         # self.config = self._load_config(config_path)
-        self.config: yaml_data.YamlSplitTransformDict = config_dict
+        self.config: yaml_data.SplitTransformDict = config_dict
         self.column_categories = self.categorize_columns_by_type()
 
     def categorize_columns_by_type(self) -> dict:
@@ -95,7 +95,7 @@ class DatasetManager:
         return {"input": input_columns, "label": label_columns, "meta": meta_columns}
 
     # TODO: Remove or change this function as the config is now preloaded
-    def _load_config(self, config_path: str) -> yaml_data.YamlSplitConfigDict:
+    def _load_config(self, config_path: str) -> yaml_data.SplitConfigDict:
         """Loads and parses a YAML configuration file.
 
         Args:
@@ -113,8 +113,8 @@ class DatasetManager:
 
         with open(config_path) as file:
             # FIXME: cette fonction est appellé pour test_shuffle_csv et test_tune
-            return yaml_data.YamlSplitConfigDict(**yaml.safe_load(file))
-            return yaml_data.YamlSplitTransformDict(**yaml.safe_load(file))
+            return yaml_data.SplitConfigDict(**yaml.safe_load(file))
+            return yaml_data.SplitTransformDict(**yaml.safe_load(file))
 
     def get_split_columns(self) -> list[str]:
         """Get the columns that are used for splitting."""
@@ -190,8 +190,7 @@ class EncodeManager:
             >>> print(encoded.shape)
             torch.Size([2, 4, 4])  # 2 sequences, length 4, one-hot encoded
         """
-        encode_all_function = self.encoder_loader.get_function_encode_all(
-            column_name)
+        encode_all_function = self.encoder_loader.get_function_encode_all(column_name)
         return encode_all_function(column_data)
 
     def encode_columns(self, column_data: dict) -> dict:
@@ -287,13 +286,13 @@ class DatasetHandler:
 
     def __init__(
         self,
-        data_config: yaml_data.YamlSplitTransformDict,
+        data_config: yaml_data.SplitTransformDict,
         csv_path: str,
     ) -> None:
         """Initialize the DatasetHandler with required config.
 
         Args:
-            data_config (yaml_data.YamlSplitTransformDict): A YamlSplitTransformDict object holding the config.
+            data_config (yaml_data.SplitTransformDict): A SplitTransformDict object holding the config.
             csv_path (str): Path to the CSV data file.
         """
         self.dataset_manager = DatasetManager(data_config)
@@ -370,8 +369,7 @@ class DatasetProcessor(DatasetHandler):
         split_input_data = self.select_columns(split_columns)
 
         # get the split indices
-        train, validation, test = split_manager.get_split_indices(
-            split_input_data)
+        train, validation, test = split_manager.get_split_indices(split_input_data)
 
         # add the split column to the data
         split_column = np.full(len(self.data), -1).astype(int)
@@ -422,7 +420,7 @@ class DatasetLoader(DatasetHandler):
 
     def __init__(
         self,
-        data_config: yaml_data.YamlSplitTransformDict,
+        data_config: yaml_data.SplitTransformDict,
         csv_path: str,
         encoder_loader: loaders.EncoderLoader,
         split: Union[int, None] = None,
@@ -460,10 +458,8 @@ class DatasetLoader(DatasetHandler):
             self.dataset_manager.column_categories["label"],
             self.dataset_manager.column_categories["meta"],
         )
-        input_data = self.encoder_manager.encode_dataframe(
-            self.data[input_columns])
-        label_data = self.encoder_manager.encode_dataframe(
-            self.data[label_columns])
+        input_data = self.encoder_manager.encode_dataframe(self.data[input_columns])
+        label_data = self.encoder_manager.encode_dataframe(self.data[label_columns])
         meta_data = {key: self.data[key].to_list() for key in meta_columns}
         return input_data, label_data, meta_data
 
@@ -481,8 +477,7 @@ class DatasetLoader(DatasetHandler):
         we are gonna load only the relevant data for it.
         """
         if "split" not in self.columns:
-            raise ValueError(
-                "The category split is not present in the csv file")
+            raise ValueError("The category split is not present in the csv file")
         if split not in [0, 1, 2]:
             raise ValueError(
                 f"The split value should be 0, 1 or 2. The specified split value is {split}"
@@ -519,18 +514,15 @@ class DatasetLoader(DatasetHandler):
             label_data = self.encoder_manager.encode_dataframe(
                 data_at_index[label_columns]
             )
-            meta_data = {key: data_at_index[key].to_list()
-                         for key in meta_columns}
+            meta_data = {key: data_at_index[key].to_list() for key in meta_columns}
 
         elif isinstance(idx, int):
             # For single row, convert to dict with column names as keys
             row_dict = dict(zip(self.data.columns, self.data.row(idx)))
 
             # Create single-row DataFrames for encoding
-            input_df = pl.DataFrame(
-                {col: [row_dict[col]] for col in input_columns})
-            label_df = pl.DataFrame(
-                {col: [row_dict[col]] for col in label_columns})
+            input_df = pl.DataFrame({col: [row_dict[col]] for col in input_columns})
+            label_df = pl.DataFrame({col: [row_dict[col]] for col in label_columns})
 
             input_data = self.encoder_manager.encode_dataframe(input_df)
             label_data = self.encoder_manager.encode_dataframe(label_df)
@@ -546,7 +538,6 @@ class DatasetLoader(DatasetHandler):
             label_data = self.encoder_manager.encode_dataframe(
                 data_at_index[label_columns]
             )
-            meta_data = {key: data_at_index[key].to_list()
-                         for key in meta_columns}
+            meta_data = {key: data_at_index[key].to_list() for key in meta_columns}
 
         return input_data, label_data, meta_data
