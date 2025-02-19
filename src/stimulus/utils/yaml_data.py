@@ -30,7 +30,7 @@ class Columns(BaseModel):
     encoder: list[ColumnsEncoder]
 
 
-class YamlTransformColumnsTransformation(BaseModel):
+class TransformColumnsTransformation(BaseModel):
     """Model for column transformation configuration."""
 
     name: str
@@ -43,7 +43,7 @@ class YamlTransformColumns(BaseModel):
     """Model for transform columns configuration."""
 
     column_name: str
-    transformations: list[YamlTransformColumnsTransformation]
+    transformations: list[TransformColumnsTransformation]
 
 
 class YamlTransform(BaseModel):
