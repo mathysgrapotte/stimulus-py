@@ -266,7 +266,7 @@ def generate_split_configs(config: ConfigDict) -> list[SplitConfigDict]:
             length will be the product of the number of parameter combinations
             and the number of splits.
     """
-    if isinstance(config, dict) and not isinstance(yaml_config, ConfigDict):
+    if isinstance(config, dict) and not isinstance(config, ConfigDict):
         raise TypeError("Input must be a ConfigDict object")
 
     sub_splits = config.split
@@ -313,7 +313,7 @@ def generate_split_transform_configs(
             length will be the product of the number of parameter combinations
             and the number of splits.
     """
-    if isinstance(config, dict) and not isinstance(yaml_config, SplitConfigDict):
+    if isinstance(config, dict) and not isinstance(config, SplitConfigDict):
         raise TypeError("Input must be a list of SubConfigDict")
 
     sub_transforms = expand_transform_list_combinations(config.transforms)
