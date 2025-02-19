@@ -12,7 +12,7 @@ from typing import Any
 import yaml
 
 from stimulus.utils.yaml_data import (
-    YamlConfigDict,
+    ConfigDict,
     SplitConfigDict,
     check_yaml_schema,
     dump_yaml_list_into_files,
@@ -64,7 +64,7 @@ def main(config_yaml: str, out_dir_path: str) -> None:
     with open(config_yaml) as conf_file:
         yaml_config = yaml.safe_load(conf_file)
 
-    yaml_config_dict: YamlConfigDict = YamlConfigDict(**yaml_config)
+    yaml_config_dict: ConfigDict = ConfigDict(**yaml_config)
     # check if the yaml schema is correct
     # FIXME: isn't it redundant to check and already class with pydantic ?
     check_yaml_schema(yaml_config_dict)
