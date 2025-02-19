@@ -51,7 +51,7 @@ def test_yaml_data_types() -> None:
             YamlSplit,
             YamlSplitConfigDict,
             YamlSplitTransformDict,
-            YamlTransform,
+            Transform,
             TransformColumns,
             TransformColumnsTransformation,
         )
