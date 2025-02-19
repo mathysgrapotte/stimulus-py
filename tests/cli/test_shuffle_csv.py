@@ -9,7 +9,7 @@ from typing import Any, Callable
 import pytest
 
 from src.stimulus.cli.shuffle_csv import main
-from src.stimulus.utils.yaml_data import YamlSplitTransformDict
+from src.stimulus.utils.yaml_data import SplitTransformDict
 
 
 # Fixtures
@@ -47,14 +47,12 @@ def test_shuffle_csv(
     with open(yaml_path) as f:
         if error:
             with pytest.raises(error):  # type: ignore[call-overload]
-                config_dict: YamlSplitTransformDict = YamlSplitTransformDict(
+                config_dict: SplitTransformDict = SplitTransformDict(
                     **yaml.safe_load(f)
                 )
                 main(csv_path, config_dict, str(tmpdir / "test.csv"))
         else:
-            config_dict: YamlSplitTransformDict = YamlSplitTransformDict(
-                **yaml.safe_load(f)
-            )
+            config_dict: SplitTransformDict = SplitTransformDict(**yaml.safe_load(f))
             main(csv_path, config_dict, str(tmpdir / "test.csv"))
             with open(tmpdir / "test.csv") as file:
                 hash = hashlib.md5(file.read().encode()).hexdigest()  # noqa: S324
