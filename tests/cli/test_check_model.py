@@ -8,17 +8,13 @@ import pytest
 import ray
 
 from stimulus.cli import check_model
-from src.stimulus.utils.yaml_data import SplitTransformDict
 
 
 @pytest.fixture
 def data_path() -> str:
     """Get path to test data CSV file."""
     return str(
-        Path(__file__).parent.parent
-        / "test_data"
-        / "titanic"
-        / "titanic_stimulus_split.csv"
+        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_stimulus_split.csv",
     )
 
 
@@ -26,10 +22,7 @@ def data_path() -> str:
 def data_config() -> str:
     """Get path to test data config YAML."""
     return str(
-        Path(__file__).parent.parent
-        / "test_data"
-        / "titanic"
-        / "titanic_sub_config.yaml"
+        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_sub_config.yaml",
     )
 
 
@@ -46,7 +39,10 @@ def model_config() -> str:
 
 
 def test_check_model_main(
-    data_path: str, data_config: str, model_path: str, model_config: str
+    data_path: str,
+    data_config: str,
+    model_path: str,
+    model_config: str,
 ) -> None:
     """Test that check_model.main runs without errors.
 
