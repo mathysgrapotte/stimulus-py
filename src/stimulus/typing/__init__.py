@@ -36,7 +36,7 @@ from stimulus.learner.raytune_parser import (
 )
 from stimulus.utils.performance import Performance
 from stimulus.utils.yaml_data import (
-    YamlColumns,
+    Columns,
     ColumnsEncoder,
     YamlConfigDict,
     GlobalParams,
@@ -79,7 +79,7 @@ RayTuneData: TypeAlias = RayTuneMetrics | RayTuneOptimizer | RayTuneResult
 # utils/yaml_data.py
 
 YamlData: TypeAlias = (
-    YamlColumns
+    Columns
     | ColumnsEncoder
     | YamlConfigDict
     | GlobalParams
