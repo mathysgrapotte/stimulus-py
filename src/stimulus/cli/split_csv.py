@@ -50,7 +50,11 @@ def get_args() -> argparse.Namespace:
 
 
 def main(
-    data_csv: str, config_yaml: str, out_path: str, *, force: bool = False
+    data_csv: str,
+    config_yaml: str,
+    out_path: str,
+    *,
+    force: bool = False,
 ) -> None:
     """Connect CSV and YAML configuration and handle sanity checks.
 
