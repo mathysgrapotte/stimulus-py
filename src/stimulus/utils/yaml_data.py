@@ -12,7 +12,7 @@ class GlobalParams(BaseModel):
     seed: int
 
 
-class YamlColumnsEncoder(BaseModel):
+class ColumnsEncoder(BaseModel):
     """Model for column encoder configuration."""
 
     name: str
@@ -27,7 +27,7 @@ class YamlColumns(BaseModel):
     column_name: str
     column_type: str
     data_type: str
-    encoder: list[YamlColumnsEncoder]
+    encoder: list[ColumnsEncoder]
 
 
 class YamlTransformColumnsTransformation(BaseModel):
