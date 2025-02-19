@@ -21,7 +21,7 @@ from stimulus.data.loaders import EncoderLoader
 from stimulus.learner.predict import PredictWrapper
 from stimulus.utils.generic_utils import set_general_seeds
 from stimulus.utils.yaml_model_schema import RayTuneModel
-from stimulus.utils.yaml_data import YamlSplitTransformDict
+from stimulus.utils.yaml_data import SplitTransformDict
 
 
 class CheckpointDict(TypedDict):
@@ -36,7 +36,7 @@ class TuneWrapper:
     def __init__(
         self,
         model_config: RayTuneModel,
-        data_config: YamlSplitTransformDict,
+        data_config: SplitTransformDict,
         model_class: nn.Module,
         data_path: str,
         encoder_loader: EncoderLoader,
@@ -87,8 +87,7 @@ class TuneWrapper:
 
         # add the data path to the config
         if not os.path.exists(data_path):
-            raise ValueError(
-                "Data path does not exist. Given path:" + data_path)
+            raise ValueError("Data path does not exist. Given path:" + data_path)
         self.config["data_path"] = os.path.abspath(data_path)
 
         # Set up tune_run path
@@ -120,7 +119,7 @@ class TuneWrapper:
 
     def tuner_initialization(
         self,
-        data_config: YamlSplitTransformDict,
+        data_config: SplitTransformDict,
         data_path: str,
         encoder_loader: EncoderLoader,
         *,
@@ -289,8 +288,7 @@ class TuneModel(Trainable):
         for _step_size in range(self.step_size):
             for x, y, _meta in self.training:
                 # the loss dict could be unpacked with ** and the function declaration handle it differently like **kwargs. to be decided, personally find this more clean and understable.
-                self.model.batch(
-                    x=x, y=y, optimizer=self.optimizer, **self.loss_dict)
+                self.model.batch(x=x, y=y, optimizer=self.optimizer, **self.loss_dict)
         return self.objective()
 
     def objective(self) -> dict[str, float]:
@@ -327,8 +325,7 @@ class TuneModel(Trainable):
         """Export model to safetensors format."""
         if export_dir is None:
             return
-        safe_save_model(self.model, os.path.join(
-            export_dir, "model.safetensors"))
+        safe_save_model(self.model, os.path.join(export_dir, "model.safetensors"))
 
     def load_checkpoint(self, checkpoint: dict[Any, Any] | None) -> None:
         """Load model and optimizer state from checkpoint."""
@@ -344,8 +341,7 @@ class TuneModel(Trainable):
 
     def save_checkpoint(self, checkpoint_dir: str) -> dict[Any, Any]:
         """Save model and optimizer state to checkpoint."""
-        safe_save_model(self.model, os.path.join(
-            checkpoint_dir, "model.safetensors"))
+        safe_save_model(self.model, os.path.join(checkpoint_dir, "model.safetensors"))
         torch.save(
             self.optimizer.state_dict(), os.path.join(checkpoint_dir, "optimizer.pt")
         )
