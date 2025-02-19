@@ -13,7 +13,7 @@ from stimulus.utils.yaml_data import SplitConfigDict
 def get_args() -> argparse.Namespace:
     """Get the arguments when using from the commandline."""
     parser = argparse.ArgumentParser(
-        description="CLI for transforming CSV data files using YAML configuration."
+        description="CLI for transforming CSV data files using YAML configuration.",
     )
     parser.add_argument(
         "-c",
