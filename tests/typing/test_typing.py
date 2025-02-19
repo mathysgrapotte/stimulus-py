@@ -52,7 +52,7 @@ def test_yaml_data_types() -> None:
             YamlSplitConfigDict,
             YamlSplitTransformDict,
             YamlTransform,
-            YamlTransformColumns,
+            TransformColumns,
             TransformColumnsTransformation,
         )
     except ImportError:
