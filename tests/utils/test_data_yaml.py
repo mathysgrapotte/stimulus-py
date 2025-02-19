@@ -62,8 +62,7 @@ def test_sub_config_validation(
     load_split_config_yaml_from_file: YamlConfigDict,
 ) -> None:
     """Test sub-config validation."""
-    split_config = generate_split_transform_configs(
-        load_split_config_yaml_from_file)[0]
+    split_config = generate_split_transform_configs(load_split_config_yaml_from_file)[0]
     print(f"{split_config=}")
     YamlSplitTransformDict.model_validate(split_config)
 
@@ -77,8 +76,8 @@ def test_expand_transform_parameter_combinations(
     results = yaml_data.expand_transform_parameter_combinations(transform)
     assert len(results) == 1  # Only one transform returned
     assert isinstance(
-        results[0], yaml_data.YamlTransform
-    )  # Should return YamlTransform objects
+        results[0], yaml_data.Transform
+    )  # Should return Transform objects
 
 
 def test_expand_transform_list_combinations(
@@ -90,9 +89,9 @@ def test_expand_transform_list_combinations(
     )
     # 4 combinations from first transform x 2 from second
     assert len(results) == 8
-    # Each result should be a YamlTransform
+    # Each result should be a Transform
     for result in results:
-        assert isinstance(result, yaml_data.YamlTransform)
+        assert isinstance(result, yaml_data.Transform)
         assert isinstance(result.transformation_name, str)
         assert isinstance(result.columns, list)
 
