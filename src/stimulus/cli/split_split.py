@@ -13,7 +13,7 @@ import yaml
 
 from stimulus.utils.yaml_data import (
     YamlConfigDict,
-    YamlSplitConfigDict,
+    SplitConfigDict,
     check_yaml_schema,
     dump_yaml_list_into_files,
     generate_split_configs,
@@ -70,7 +70,7 @@ def main(config_yaml: str, out_dir_path: str) -> None:
     check_yaml_schema(yaml_config_dict)
 
     # generate the yaml files per split
-    split_configs: list[YamlSplitConfigDict] = generate_split_configs(yaml_config_dict)
+    split_configs: list[SplitConfigDict] = generate_split_configs(yaml_config_dict)
 
     # dump all the YAML configs into files
     dump_yaml_list_into_files(split_configs, out_dir_path, "test_split")
