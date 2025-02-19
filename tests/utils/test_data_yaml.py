@@ -39,7 +39,7 @@ def load_split_config_yaml_from_file() -> SplitConfigDict:
 def load_yaml_from_file() -> ConfigDict:
     """Fixture that loads a test YAML configuration file."""
     with open(
-        "tests/test_data/dna_experiment/dna_experiment_config_template.yaml"
+        "tests/test_data/dna_experiment/dna_experiment_config_template.yaml",
     ) as f:
         yaml_dict = yaml.safe_load(f)
         return ConfigDict(**yaml_dict)
@@ -76,7 +76,8 @@ def test_expand_transform_parameter_combinations(
     results = yaml_data.expand_transform_parameter_combinations(transform)
     assert len(results) == 1  # Only one transform returned
     assert isinstance(
-        results[0], yaml_data.Transform
+        results[0],
+        yaml_data.Transform,
     )  # Should return Transform objects
 
 
@@ -85,7 +86,7 @@ def test_expand_transform_list_combinations(
 ) -> None:
     """Tests expanding a list of transforms into all parameter combinations."""
     results = yaml_data.expand_transform_list_combinations(
-        load_yaml_from_file.transforms
+        load_yaml_from_file.transforms,
     )
     # 4 combinations from first transform x 2 from second
     assert len(results) == 8
@@ -127,7 +128,8 @@ def test_check_yaml_schema(
     data = request.getfixturevalue(test_input[0])
     if test_input[1]:
         with pytest.raises(
-            ValueError, match="Wrong type on a field, see the pydantic report above"
+            ValueError,
+            match="Wrong type on a field, see the pydantic report above",
         ):
             yaml_data.check_yaml_schema(data)
     else:
