@@ -14,8 +14,8 @@ from stimulus.data.data_handlers import (
 )
 from stimulus.utils.yaml_data import (
     YamlConfigDict,
-    YamlSplitConfigDict,
-    YamlSplitTransformDict,
+    SplitConfigDict,
+    SplitTransformDict,
     Transform,
     TransformColumns,
     TransformColumnsTransformation,
@@ -70,24 +70,24 @@ def generate_sub_configs(base_config: YamlConfigDict) -> list[YamlConfigDict]:
     Returns:
         list[YamlConfigDict]: List of generated configurations
     """
-    split_configs: list[YamlSplitConfigDict] = generate_split_configs(base_config)
-    split_transform_list: list[YamlSplitTransformDict] = []
+    split_configs: list[SplitConfigDict] = generate_split_configs(base_config)
+    split_transform_list: list[SplitTransformDict] = []
     for split in split_configs:
         split_transform_list.extend(generate_split_transform_configs(split))
     return split_transform_list
 
 
 @pytest.fixture
-def dump_single_split_config_to_disk() -> YamlSplitTransformDict:
+def dump_single_split_config_to_disk() -> SplitTransformDict:
     """Get path for dumping single split config.
 
     Returns:
         str: Path to dump config file
     """
-    config_dict: YamlSplitTransformDict
+    config_dict: SplitTransformDict
     path: str = "tests/test_data/titanic/titanic_sub_config.yaml"
     with open(path) as f:
-        config_dict = YamlSplitTransformDict(**yaml.safe_load(f))
+        config_dict = SplitTransformDict(**yaml.safe_load(f))
     return config_dict
 
 
@@ -143,7 +143,7 @@ def split_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.SplitLoa
 
 # Test DatasetManager
 def test_dataset_manager_init(
-    dump_single_split_config_to_disk: YamlSplitTransformDict,
+    dump_single_split_config_to_disk: SplitTransformDict,
 ) -> None:
     """Test initialization of DatasetManager."""
     manager = DatasetManager(dump_single_split_config_to_disk)
