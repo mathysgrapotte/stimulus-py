@@ -5,7 +5,7 @@ from typing import Optional
 from torch.utils.data import Dataset
 
 from stimulus.data import data_handlers, loaders
-from stimulus.utils.yaml_data import YamlSplitTransformDict
+from stimulus.utils.yaml_data import SplitTransformDict
 
 
 class TorchDataset(Dataset):
@@ -13,7 +13,7 @@ class TorchDataset(Dataset):
 
     def __init__(
         self,
-        data_config: YamlSplitTransformDict,
+        data_config: SplitTransformDict,
         csv_path: str,
         encoder_loader: loaders.EncoderLoader,
         split: Optional[int] = None,
@@ -21,7 +21,7 @@ class TorchDataset(Dataset):
         """Initialize the TorchDataset.
 
         Args:
-            data_config: A YamlSplitTransformDict holding the configuration.
+            data_config: A SplitTransformDict holding the configuration.
             csv_path: Path to the CSV data file
             encoder_loader: Encoder loader instance
             split: Optional tuple containing split information
