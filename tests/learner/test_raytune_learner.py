@@ -10,7 +10,7 @@ import yaml
 from stimulus.data.handlertorch import TorchDataset
 from stimulus.data.loaders import EncoderLoader
 from stimulus.learner.raytune_learner import TuneWrapper
-from stimulus.utils.yaml_data import SplitConfigDict, SplitTransformDict
+from stimulus.utils.yaml_data import SplitTransformDict
 from stimulus.utils.yaml_model_schema import Model, RayTuneModel, YamlRayConfigLoader
 from tests.test_model import titanic_model
 
@@ -30,7 +30,7 @@ def encoder_loader() -> EncoderLoader:
         data_config = yaml.safe_load(file)
     encoder_loader = EncoderLoader()
     encoder_loader.initialize_column_encoders_from_config(
-        SplitTransformDict(**data_config).columns
+        SplitTransformDict(**data_config).columns,
     )
     return encoder_loader
 
@@ -47,7 +47,8 @@ def titanic_dataset(encoder_loader: EncoderLoader) -> TorchDataset:
 
 
 def test_tunewrapper_init(
-    ray_config_loader: RayTuneModel, encoder_loader: EncoderLoader
+    ray_config_loader: RayTuneModel,
+    encoder_loader: EncoderLoader,
 ) -> None:
     """Test the initialization of the TuneWrapper class."""
     # Filter ResourceWarning during Ray shutdown
@@ -86,7 +87,8 @@ def test_tunewrapper_init(
 
 
 def test_tune_wrapper_tune(
-    ray_config_loader: RayTuneModel, encoder_loader: EncoderLoader
+    ray_config_loader: RayTuneModel,
+    encoder_loader: EncoderLoader,
 ) -> None:
     """Test the tune method of TuneWrapper class."""
     # Filter ResourceWarning during Ray shutdown
