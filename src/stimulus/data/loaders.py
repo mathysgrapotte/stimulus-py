@@ -268,12 +268,12 @@ class SplitLoader:
         self.split = splitter
 
     def initialize_splitter_from_config(
-        self, split_config: yaml_data.YamlSplitConfigDict
+        self, split_config: yaml_data.SplitConfigDict
     ) -> None:
         """Build the loader from a config dictionary.
 
         Args:
-            split_config (yaml_data.YamlSplitConfigDict): Configuration dictionary containing split configurations.
+            split_config (yaml_data.SplitConfigDict): Configuration dictionary containing split configurations.
         """
         splitter = self.get_splitter(split_config.split_method, split_config.params)
         self.set_splitter_as_attribute(splitter)
