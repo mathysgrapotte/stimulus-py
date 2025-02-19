@@ -20,10 +20,7 @@ from src.stimulus.utils.yaml_data import SplitTransformDict
 def data_path() -> str:
     """Get path to test data CSV file."""
     return str(
-        Path(__file__).parent.parent
-        / "test_data"
-        / "titanic"
-        / "titanic_stimulus_split.csv",
+        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_stimulus_split.csv",
     )
 
 
@@ -31,10 +28,7 @@ def data_path() -> str:
 def data_config() -> str:
     """Get path to test data config YAML."""
     return str(
-        Path(__file__).parent.parent
-        / "test_data"
-        / "titanic"
-        / "titanic_sub_config.yaml",
+        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_sub_config.yaml",
     )
 
 
