@@ -440,7 +440,7 @@ def dump_yaml_list_into_files(
             )
 
 
-def check_yaml_schema(config: ConfigDict) -> str:
+def check_schema(config: ConfigDict) -> str:
     """Validate configuration fields have correct types.
 
     If the children field is specific to a parent, the children fields class is hosted in the parent fields class.
