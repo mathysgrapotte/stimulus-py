@@ -49,6 +49,4 @@ def test_split_transforms(
         for f in test_out:
             with open(os.path.join(tmpdir, f)) as file:
                 hashes.append(hashlib.md5(file.read().encode()).hexdigest())
-        assert (
-            sorted(hashes) == snapshot
-        )  # Sorted ensures that the order of the hashes does not matter
+        assert sorted(hashes) == snapshot  # Sorted ensures that the order of the hashes does not matter
