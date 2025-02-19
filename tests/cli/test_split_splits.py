@@ -2,7 +2,6 @@
 
 import hashlib
 import os
-import tempfile
 from typing import Any, Callable
 
 import pytest
@@ -53,6 +52,4 @@ def test_split_split(
         for f in test_out:
             with open(os.path.join(tmpdir, f)) as file:
                 hashes.append(hashlib.md5(file.read().encode()).hexdigest())  # noqa: S324
-        assert (
-            sorted(hashes) == snapshot
-        )  # sorted ensures that the order of the hashes does not matter
+        assert sorted(hashes) == snapshot  # sorted ensures that the order of the hashes does not matter
