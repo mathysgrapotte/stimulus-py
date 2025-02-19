@@ -121,7 +121,7 @@ def main(
     """
     with open(data_config_path) as file:
         data_config = yaml.safe_load(file)
-        data_config = yaml_data.YamlSplitTransformDict(**data_config)
+        data_config = yaml_data.SplitTransformDict(**data_config)
 
     with open(model_config_path) as file:
         model_config = yaml.safe_load(file)
@@ -138,8 +138,7 @@ def main(
 
     logger.info("Model class loaded successfully.")
 
-    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(
-        model=model_config)
+    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(model=model_config)
     ray_config_dict = ray_config_loader.get_config().model_dump()
     ray_config_model = ray_config_loader.get_config()
 
