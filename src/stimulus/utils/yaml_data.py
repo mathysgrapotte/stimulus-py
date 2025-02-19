@@ -1,4 +1,4 @@
-"""Utility module for handling YAML configuration files and their validation."""
+"""Utility module for handling configuration files and their validation."""
 
 from typing import Any, Optional, Union
 
@@ -7,7 +7,7 @@ from pydantic import BaseModel, ValidationError, field_validator
 
 
 class GlobalParams(BaseModel):
-    """Model for global parameters in YAML configuration."""
+    """Model for global parameters in configuration."""
 
     seed: int
 
@@ -103,7 +103,7 @@ class Split(BaseModel):
 
 
 class ConfigDict(BaseModel):
-    """Model for main YAML configuration."""
+    """Model for main configuration."""
 
     global_params: GlobalParams
     columns: list[Columns]
@@ -131,13 +131,13 @@ class SplitTransformDict(BaseModel):
 
 
 class Schema(BaseModel):
-    """Model for validating YAML schema."""
+    """Model for validating schema."""
 
     conf: ConfigDict
 
 
 class SplitSchema(BaseModel):
-    """Model for validating a Split YAML schema."""
+    """Model for validating a Split schema."""
 
     conf: SplitConfigDict
 
@@ -239,9 +239,9 @@ def expand_transform_list_combinations(
 
 
 def generate_split_configs(config: ConfigDict) -> list[SplitConfigDict]:
-    """Generates all possible split configuration from a YAML config.
+    """Generates all possible split configuration from a config.
 
-    Takes a YAML configuration that may contain parameter lists and splits,
+    Takes a configuration that may contain parameter lists and splits,
     and generates all unique splits into separate data configurations.
 
     For example, if the config has:
@@ -257,7 +257,7 @@ def generate_split_configs(config: ConfigDict) -> list[SplitConfigDict]:
             split: [0.8, 0.2]
 
     Args:
-        config: The source YAML configuration containing transforms with
+        config: The source configuration containing transforms with
             parameter lists and multiple splits.
 
     Returns:
@@ -288,7 +288,7 @@ def generate_split_transform_configs(
 ) -> list[SplitTransformDict]:
     """Generates all the transform configuration for a given split
 
-    Takes a YAML configuration that may contain a transform or a list of transform,
+    Takes a configuration that may contain a transform or a list of transform,
     and generates all unique transform for a split into separate data configurations.
 
     For example, if the config has:
@@ -304,7 +304,7 @@ def generate_split_transform_configs(
             split: [0.7, 0.3]
 
     Args:
-        config: The source YAML configuration containing each
+        config: The source configuration containing each
             a split with transforms with parameters lists
 
     Returns:
@@ -441,7 +441,7 @@ def dump_yaml_list_into_files(
 
 
 def check_yaml_schema(config: ConfigDict) -> str:
-    """Validate YAML configuration fields have correct types.
+    """Validate configuration fields have correct types.
 
     If the children field is specific to a parent, the children fields class is hosted in the parent fields class.
     If any field in not the right type, the function prints an error message explaining the problem and exits the python code.
