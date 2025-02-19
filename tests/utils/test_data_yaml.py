@@ -120,7 +120,7 @@ def test_generate_data_configs(
     "test_input",
     [("load_yaml_from_file", False), ("load_wrong_type_yaml", True)],
 )
-def test_check_yaml_schema(
+def test_check_schema(
     request: pytest.FixtureRequest,
     test_input: tuple[str, bool],
 ) -> None:
@@ -131,6 +131,6 @@ def test_check_yaml_schema(
             ValueError,
             match="Wrong type on a field, see the pydantic report above",
         ):
-            yaml_data.check_yaml_schema(data)
+            yaml_data.check_schema(data)
     else:
-        yaml_data.check_yaml_schema(data)
+        yaml_data.check_schema(data)

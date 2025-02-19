@@ -14,7 +14,7 @@ import yaml
 from stimulus.utils.yaml_data import (
     ConfigDict,
     SplitConfigDict,
-    check_yaml_schema,
+    check_schema,
     dump_yaml_list_into_files,
     generate_split_configs,
 )
@@ -67,7 +67,7 @@ def main(config_yaml: str, out_dir_path: str) -> None:
     yaml_config_dict: ConfigDict = ConfigDict(**yaml_config)
     # check if the yaml schema is correct
     # FIXME: isn't it redundant to check and already class with pydantic ?
-    check_yaml_schema(yaml_config_dict)
+    check_schema(yaml_config_dict)
 
     # generate the yaml files per split
     split_configs: list[SplitConfigDict] = generate_split_configs(yaml_config_dict)
