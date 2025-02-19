@@ -1,7 +1,5 @@
 """Ray Tune wrapper and trainable model classes for hyperparameter optimization."""
 
-from stimulus.utils.yaml_model_schema import RayTuneModel
-from stimulus.utils.yaml_data import SplitTransformDict
 import datetime
 import logging
 import os
@@ -22,6 +20,8 @@ from stimulus.data.handlertorch import TorchDataset
 from stimulus.data.loaders import EncoderLoader
 from stimulus.learner.predict import PredictWrapper
 from stimulus.utils.generic_utils import set_general_seeds
+from stimulus.utils.yaml_data import SplitTransformDict
+from stimulus.utils.yaml_model_schema import RayTuneModel
 
 
 class CheckpointDict(TypedDict):
@@ -314,14 +314,8 @@ class TuneModel(Trainable):
             loss_dict=self.loss_dict,
         )
         return {
-            **{
-                "val_" + metric: value
-                for metric, value in predict_val.compute_metrics(metrics).items()
-            },
-            **{
-                "train_" + metric: value
-                for metric, value in predict_train.compute_metrics(metrics).items()
-            },
+            **{"val_" + metric: value for metric, value in predict_val.compute_metrics(metrics).items()},
+            **{"train_" + metric: value for metric, value in predict_train.compute_metrics(metrics).items()},
         }
 
     # type: ignore[override]

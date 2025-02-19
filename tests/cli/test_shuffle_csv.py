@@ -6,10 +6,8 @@ import tempfile
 from typing import Any, Callable
 
 import pytest
-import yaml
 
 from src.stimulus.cli.shuffle_csv import main
-from src.stimulus.utils.yaml_data import SplitTransformDict
 
 
 # Fixtures

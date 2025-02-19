@@ -332,19 +332,10 @@ def test_dataset_processor_apply_transformation_group(
 
     assert processor.data["age"].to_list() != processor_control.data["age"].to_list()
     assert processor.data["fare"].to_list() != processor_control.data["fare"].to_list()
-    assert (
-        processor.data["parch"].to_list() == processor_control.data["parch"].to_list()
-    )
-    assert (
-        processor.data["sibsp"].to_list() == processor_control.data["sibsp"].to_list()
-    )
-    assert (
-        processor.data["pclass"].to_list() == processor_control.data["pclass"].to_list()
-    )
-    assert (
-        processor.data["embarked"].to_list()
-        == processor_control.data["embarked"].to_list()
-    )
+    assert processor.data["parch"].to_list() == processor_control.data["parch"].to_list()
+    assert processor.data["sibsp"].to_list() == processor_control.data["sibsp"].to_list()
+    assert processor.data["pclass"].to_list() == processor_control.data["pclass"].to_list()
+    assert processor.data["embarked"].to_list() == processor_control.data["embarked"].to_list()
     assert processor.data["sex"].to_list() == processor_control.data["sex"].to_list()
 
 
