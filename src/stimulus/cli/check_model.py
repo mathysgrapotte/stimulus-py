@@ -129,7 +129,7 @@ def main(
 
     encoder_loader = loaders.EncoderLoader()
     encoder_loader.initialize_column_encoders_from_config(
-        column_config=data_config.columns
+        column_config=data_config.columns,
     )
 
     logger.info("Dataset loaded successfully.")
