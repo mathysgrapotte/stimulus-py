@@ -13,7 +13,7 @@ from stimulus.data.data_handlers import (
     TransformManager,
 )
 from stimulus.utils.yaml_data import (
-    YamlConfigDict,
+    ConfigDict,
     SplitConfigDict,
     SplitTransformDict,
     Transform,
@@ -47,28 +47,28 @@ def config_path() -> str:
 
 
 @pytest.fixture
-def base_config(config_path: str) -> YamlConfigDict:
+def base_config(config_path: str) -> ConfigDict:
     """Load base configuration from YAML file.
 
     Args:
         config_path: Path to config file
 
     Returns:
-        YamlConfigDict: Loaded configuration
+        ConfigDict: Loaded configuration
     """
     with open(config_path) as f:
-        return YamlConfigDict(**yaml.safe_load(f))
+        return ConfigDict(**yaml.safe_load(f))
 
 
 @pytest.fixture
-def generate_sub_configs(base_config: YamlConfigDict) -> list[YamlConfigDict]:
+def generate_sub_configs(base_config: ConfigDict) -> list[ConfigDict]:
     """Generate all possible configurations from base config.
 
     Args:
         base_config: Base configuration to generate from
 
     Returns:
-        list[YamlConfigDict]: List of generated configurations
+        list[ConfigDict]: List of generated configurations
     """
     split_configs: list[SplitConfigDict] = generate_split_configs(base_config)
     split_transform_list: list[SplitTransformDict] = []
@@ -93,7 +93,7 @@ def dump_single_split_config_to_disk() -> SplitTransformDict:
 
 # Loader fixtures
 @pytest.fixture
-def encoder_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.EncoderLoader:
+def encoder_loader(generate_sub_configs: list[ConfigDict]) -> loaders.EncoderLoader:
     """Create encoder loader with initialized encoders.
 
     Args:
@@ -109,7 +109,7 @@ def encoder_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.Encode
 
 @pytest.fixture
 def transform_loader(
-    generate_sub_configs: list[YamlConfigDict],
+    generate_sub_configs: list[ConfigDict],
 ) -> loaders.TransformLoader:
     """Create transform loader with initialized transformers.
 
@@ -127,7 +127,7 @@ def transform_loader(
 
 
 @pytest.fixture
-def split_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.SplitLoader:
+def split_loader(generate_sub_configs: list[ConfigDict]) -> loaders.SplitLoader:
     """Create split loader with initialized splitter.
 
     Args:
