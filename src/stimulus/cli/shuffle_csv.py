@@ -3,7 +3,10 @@
 
 import argparse
 
+import yaml
+
 from stimulus.data.data_handlers import DatasetProcessor
+from stimulus.utils.yaml_data import SplitTransformDict
 
 
 def get_args() -> argparse.Namespace:
@@ -51,8 +54,13 @@ def main(data_csv: str, config_yaml: str, out_path: str) -> None:
 
     TODO major changes when this is going to select a given shuffle method and integration with split.
     """
+    # read the yaml file
+    with open(config_yaml) as f:
+        data_config: SplitTransformDict = SplitTransformDict(
+            **yaml.safe_load(f),
+        )
     # create a DatasetProcessor object from the config and the csv
-    processor = DatasetProcessor(config_path=config_yaml, csv_path=data_csv)
+    processor = DatasetProcessor(data_config=data_config, csv_path=data_csv)
 
     # shuffle the data with a default seed. TODO get the seed for the config if and when that is going to be set there.
     processor.shuffle_labels(seed=42)

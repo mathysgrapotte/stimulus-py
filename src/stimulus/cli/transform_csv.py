@@ -57,7 +57,6 @@ def main(data_csv: str, config_yaml: str, out_path: str) -> None:
     with open(config_yaml) as f:
         yaml_config = SplitConfigDict(**yaml.safe_load(f))
     transform_loader = TransformLoader(seed=yaml_config.global_params.seed)
-    print(transform_config)
     transform_loader.initialize_column_data_transformers_from_config(transform_config)
     transform_manager = TransformManager(transform_loader)
 

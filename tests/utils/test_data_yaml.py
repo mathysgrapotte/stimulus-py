@@ -63,7 +63,6 @@ def test_sub_config_validation(
 ) -> None:
     """Test sub-config validation."""
     split_config = generate_split_transform_configs(load_split_config_yaml_from_file)[0]
-    print(f"{split_config=}")
     SplitTransformDict.model_validate(split_config)
 
 

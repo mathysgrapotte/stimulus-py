@@ -44,16 +44,11 @@ def test_shuffle_csv(
     csv_path = request.getfixturevalue(csv_type)
     yaml_path = request.getfixturevalue(yaml_type)
     tmpdir = pathlib.Path(tempfile.gettempdir())
-    with open(yaml_path) as f:
-        if error:
-            with pytest.raises(error):  # type: ignore[call-overload]
-                config_dict: SplitTransformDict = SplitTransformDict(
-                    **yaml.safe_load(f),
-                )
-                main(csv_path, config_dict, str(tmpdir / "test.csv"))
-        else:
-            config_dict: SplitTransformDict = SplitTransformDict(**yaml.safe_load(f))
-            main(csv_path, config_dict, str(tmpdir / "test.csv"))
-            with open(tmpdir / "test.csv") as file:
-                hash = hashlib.md5(file.read().encode()).hexdigest()  # noqa: S324
-            assert hash == snapshot
+    if error:
+        with pytest.raises(error):  # type: ignore[call-overload]
+            main(csv_path, yaml_path, str(tmpdir / "test.csv"))
+    else:
+        main(csv_path, yaml_path, str(tmpdir / "test.csv"))
+        with open(tmpdir / "test.csv") as file:
+            hash = hashlib.md5(file.read().encode()).hexdigest()  # noqa: S324
+        assert hash == snapshot

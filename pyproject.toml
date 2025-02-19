@@ -52,7 +52,8 @@ stimulus-transform-csv = "stimulus.cli.transform_csv:run"
 stimulus-split-csv = "stimulus.cli.split_csv:run"
 stimulus-check-model = "stimulus.cli.check_model:run"
 stimulus-tuning = "stimulus.cli.tuning:run"
-stimulus-split-yaml = "stimulus.cli.split_yaml:run"
+stimulus-split-yaml-split = "stimulus.cli.split_split:run"
+stimulus-split-yaml-transform = "stimulus.cli.split_transforms:run"
 
 [project.urls]
 Homepage = "https://mathysgrapotte.github.io/stimulus-py"

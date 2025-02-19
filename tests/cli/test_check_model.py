@@ -64,7 +64,6 @@ def test_check_model_main(
     assert os.path.exists(model_config), f"Model config not found at {model_config}"
 
     try:
-        config_dict: yam
         # Run main function - should complete without errors
         check_model.main(
             model_path=model_path,

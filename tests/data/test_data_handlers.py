@@ -283,7 +283,7 @@ def test_dataset_processor_init(
 ) -> None:
     """Test initialization of DatasetProcessor."""
     processor = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
 
@@ -298,7 +298,7 @@ def test_dataset_processor_apply_split(
 ) -> None:
     """Test applying splits in DatasetProcessor."""
     processor = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
     processor.data = processor.load_csv(titanic_csv_path)
@@ -315,13 +315,13 @@ def test_dataset_processor_apply_transformation_group(
 ) -> None:
     """Test applying transformation groups."""
     processor = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
     processor.data = processor.load_csv(titanic_csv_path)
 
     processor_control = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
     processor_control.data = processor_control.load_csv(titanic_csv_path)
@@ -332,10 +332,19 @@ def test_dataset_processor_apply_transformation_group(
 
     assert processor.data["age"].to_list() != processor_control.data["age"].to_list()
     assert processor.data["fare"].to_list() != processor_control.data["fare"].to_list()
-    assert processor.data["parch"].to_list() == processor_control.data["parch"].to_list()
-    assert processor.data["sibsp"].to_list() == processor_control.data["sibsp"].to_list()
-    assert processor.data["pclass"].to_list() == processor_control.data["pclass"].to_list()
-    assert processor.data["embarked"].to_list() == processor_control.data["embarked"].to_list()
+    assert (
+        processor.data["parch"].to_list() == processor_control.data["parch"].to_list()
+    )
+    assert (
+        processor.data["sibsp"].to_list() == processor_control.data["sibsp"].to_list()
+    )
+    assert (
+        processor.data["pclass"].to_list() == processor_control.data["pclass"].to_list()
+    )
+    assert (
+        processor.data["embarked"].to_list()
+        == processor_control.data["embarked"].to_list()
+    )
     assert processor.data["sex"].to_list() == processor_control.data["sex"].to_list()
 
 

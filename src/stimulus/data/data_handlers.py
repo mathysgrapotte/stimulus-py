@@ -211,11 +211,16 @@ class EncodeManager:
             >>> print(encoded["dna_seq"].shape)
             torch.Size([2, 4, 4])  # 2 sequences, length 4, one-hot encoded
         """
-        return {col: self.encode_column(col, values) for col, values in column_data.items()}
+        return {
+            col: self.encode_column(col, values) for col, values in column_data.items()
+        }
 
     def encode_dataframe(self, dataframe: pl.DataFrame) -> dict[str, torch.Tensor]:
         """Encode the dataframe using the encoders."""
-        return {col: self.encode_column(col, dataframe[col].to_list()) for col in dataframe.columns}
+        return {
+            col: self.encode_column(col, dataframe[col].to_list())
+            for col in dataframe.columns
+        }
 
 
 class TransformManager:
@@ -245,7 +250,9 @@ class TransformManager:
             list: The transformed data.
             bool: Whether the transformation added new rows to the data.
         """
-        transformer = self.transform_loader.__getattribute__(column_name)[transform_name]
+        transformer = self.transform_loader.__getattribute__(column_name)[
+            transform_name
+        ]
         return transformer.transform_all(column_data), transformer.add_row
 
 
@@ -343,9 +350,11 @@ class DatasetHandler:
 class DatasetProcessor(DatasetHandler):
     """Class for loading dataset, applying transformations and splitting."""
 
-    def __init__(self, config_path: str, csv_path: str) -> None:
+    def __init__(
+        self, data_config: yaml_data.SplitTransformDict, csv_path: str
+    ) -> None:
         """Initialize the DatasetProcessor."""
-        super().__init__(config_path, csv_path)
+        super().__init__(data_config, csv_path)
 
     def add_split(self, split_manager: SplitManager, *, force: bool = False) -> None:
         """Add a column specifying the train, validation, test splits of the data.
@@ -424,7 +433,11 @@ class DatasetLoader(DatasetHandler):
         """Initialize the DatasetLoader."""
         super().__init__(data_config, csv_path)
         self.encoder_manager = EncodeManager(encoder_loader)
-        self.data = self.load_csv_per_split(csv_path, split) if split is not None else self.load_csv(csv_path)
+        self.data = (
+            self.load_csv_per_split(csv_path, split)
+            if split is not None
+            else self.load_csv(csv_path)
+        )
 
     def get_all_items(self) -> tuple[dict, dict, dict]:
         """Get the full dataset as three separate dictionaries for inputs, labels and metadata.

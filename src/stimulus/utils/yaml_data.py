@@ -16,7 +16,8 @@ class ColumnsEncoder(BaseModel):
     """Model for column encoder configuration."""
 
     name: str
-    params: Optional[dict[str, Union[str, list[Any]]]]  # Allow both string and list values
+    # Allow both string and list values
+    params: Optional[dict[str, Union[str, list[Any]]]]
 
 
 class Columns(BaseModel):
@@ -32,7 +33,8 @@ class TransformColumnsTransformation(BaseModel):
     """Model for column transformation configuration."""
 
     name: str
-    params: Optional[dict[str, Union[list[Any], float]]]  # Allow both list and float values
+    # Allow both list and float values
+    params: Optional[dict[str, Union[list[Any], float]]]
 
 
 class TransformColumns(BaseModel):
@@ -191,9 +193,14 @@ def expand_transform_parameter_combinations(
     for column in transform.columns:
         for transformation in column.transformations:
             if transformation.params:
-                list_lengths = [len(v) for v in transformation.params.values() if isinstance(v, list) and len(v) > 1]
+                list_lengths = [
+                    len(v)
+                    for v in transformation.params.values()
+                    if isinstance(v, list) and len(v) > 1
+                ]
                 if list_lengths:
-                    max_length = list_lengths[0]  # All lists have same length due to validator
+                    # All lists have same length due to validator
+                    max_length = list_lengths[0]
                     break
 
     # Generate a transform for each index
@@ -284,8 +291,8 @@ def generate_split_transform_configs(
     and generates all unique transform for a split into separate data configurations.
 
     For example, if the config has:
-    - Two transforms with parameters [0.1, 0.2], [0.3, 0.4]
-    - A split [0.7, 0.3]
+    - Two transforms with parameters[0.1, 0.2], [0.3, 0.4]
+    - A split[0.7, 0.3]
     This will generate 2 configs, 2 for each split.
         transform_config_1:
             transform: [0.1, 0.2]
@@ -305,6 +312,7 @@ def generate_split_transform_configs(
             length will be the product of the number of parameter combinations
             and the number of splits.
     """
+
     if isinstance(config, dict) and not isinstance(config, SplitConfigDict):
         raise TypeError("Input must be a list of SubConfigDict")
 
@@ -395,21 +403,30 @@ def dump_yaml_list_into_files(
                         processed_dict[key] = []
                         for encoder in value:
                             processed_encoder = dict(encoder)
-                            if "params" not in processed_encoder or not processed_encoder["params"]:
+                            if (
+                                "params" not in processed_encoder
+                                or not processed_encoder["params"]
+                            ):
                                 processed_encoder["params"] = {}
                             processed_dict[key].append(processed_encoder)
                     elif key == "transformations" and isinstance(value, list):
                         processed_dict[key] = []
                         for transformation in value:
                             processed_transformation = dict(transformation)
-                            if "params" not in processed_transformation or not processed_transformation["params"]:
+                            if (
+                                "params" not in processed_transformation
+                                or not processed_transformation["params"]
+                            ):
                                 processed_transformation["params"] = {}
                             processed_dict[key].append(processed_transformation)
                     elif isinstance(value, dict):
                         processed_dict[key] = fix_params(value)
                     elif isinstance(value, list):
                         processed_dict[key] = [
-                            fix_params(list_item) if isinstance(list_item, dict) else list_item for list_item in value
+                            fix_params(list_item)
+                            if isinstance(list_item, dict)
+                            else list_item
+                            for list_item in value
                         ]
                     else:
                         processed_dict[key] = value
@@ -433,7 +450,7 @@ def dump_yaml_list_into_files(
 def check_schema(config: ConfigDict) -> str:
     """Validate configuration fields have correct types.
 
-    If the children field is specific to a parent, the children fields class is hosted in the parent fields class.
+    If the children field is specific to a parent, the children fields class is hosted in the parent fields class .
     If any field in not the right type, the function prints an error message explaining the problem and exits the python code.
 
     Args:
