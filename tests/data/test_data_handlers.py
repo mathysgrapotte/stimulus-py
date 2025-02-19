@@ -17,7 +17,7 @@ from stimulus.utils.yaml_data import (
     YamlSplitConfigDict,
     YamlSplitTransformDict,
     YamlTransform,
-    YamlTransformColumns,
+    TransformColumns,
     TransformColumnsTransformation,
     generate_split_configs,
     generate_split_transform_configs,
@@ -233,7 +233,7 @@ def test_transform_manager_transform_column() -> None:
     dummy_config = YamlTransform(
         transformation_name="GaussianNoise",
         columns=[
-            YamlTransformColumns(
+            TransformColumns(
                 column_name="test_col",
                 transformations=[
                     TransformColumnsTransformation(
