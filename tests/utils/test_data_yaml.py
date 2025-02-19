@@ -5,7 +5,7 @@ import yaml
 
 from src.stimulus.utils import yaml_data
 from src.stimulus.utils.yaml_data import (
-    YamlConfigDict,
+    ConfigDict,
     SplitConfigDict,
     SplitTransformDict,
     generate_split_configs,
@@ -20,11 +20,11 @@ def titanic_csv_path() -> str:
 
 
 @pytest.fixture
-def load_titanic_yaml_from_file() -> YamlConfigDict:
+def load_titanic_yaml_from_file() -> ConfigDict:
     """Fixture that loads a test YAML configuration file."""
     with open("tests/test_data/titanic/titanic.yaml") as f:
         yaml_dict = yaml.safe_load(f)
-        return YamlConfigDict(**yaml_dict)
+        return ConfigDict(**yaml_dict)
 
 
 @pytest.fixture
@@ -36,13 +36,13 @@ def load_split_config_yaml_from_file() -> SplitConfigDict:
 
 
 @pytest.fixture
-def load_yaml_from_file() -> YamlConfigDict:
+def load_yaml_from_file() -> ConfigDict:
     """Fixture that loads a test YAML configuration file."""
     with open(
         "tests/test_data/dna_experiment/dna_experiment_config_template.yaml"
     ) as f:
         yaml_dict = yaml.safe_load(f)
-        return YamlConfigDict(**yaml_dict)
+        return ConfigDict(**yaml_dict)
 
 
 @pytest.fixture
@@ -52,14 +52,14 @@ def load_wrong_type_yaml() -> dict:
         return yaml.safe_load(f)
 
 
-def test_split_config_validation(load_titanic_yaml_from_file: YamlConfigDict) -> None:
+def test_split_config_validation(load_titanic_yaml_from_file: ConfigDict) -> None:
     """Test split configuration validation."""
     split_config = generate_split_configs(load_titanic_yaml_from_file)[0]
     SplitConfigDict.model_validate(split_config)
 
 
 def test_sub_config_validation(
-    load_split_config_yaml_from_file: YamlConfigDict,
+    load_split_config_yaml_from_file: ConfigDict,
 ) -> None:
     """Test sub-config validation."""
     split_config = generate_split_transform_configs(load_split_config_yaml_from_file)[0]
@@ -68,7 +68,7 @@ def test_sub_config_validation(
 
 
 def test_expand_transform_parameter_combinations(
-    load_yaml_from_file: YamlConfigDict,
+    load_yaml_from_file: ConfigDict,
 ) -> None:
     """Tests expanding transforms with parameter lists into individual transforms."""
     # Test transform with multiple parameter lists
@@ -81,7 +81,7 @@ def test_expand_transform_parameter_combinations(
 
 
 def test_expand_transform_list_combinations(
-    load_yaml_from_file: YamlConfigDict,
+    load_yaml_from_file: ConfigDict,
 ) -> None:
     """Tests expanding a list of transforms into all parameter combinations."""
     results = yaml_data.expand_transform_list_combinations(
@@ -97,7 +97,7 @@ def test_expand_transform_list_combinations(
 
 
 def test_generate_data_configs(
-    load_yaml_from_file: YamlConfigDict,
+    load_yaml_from_file: ConfigDict,
 ) -> None:
     """Tests generating all possible data configurations."""
     split_configs = yaml_data.generate_split_configs(load_yaml_from_file)
