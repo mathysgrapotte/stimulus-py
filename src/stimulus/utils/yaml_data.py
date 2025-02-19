@@ -6,7 +6,7 @@ import yaml
 from pydantic import BaseModel, ValidationError, field_validator
 
 
-class YamlGlobalParams(BaseModel):
+class GlobalParams(BaseModel):
     """Model for global parameters in YAML configuration."""
 
     seed: int
@@ -105,7 +105,7 @@ class YamlSplit(BaseModel):
 class YamlConfigDict(BaseModel):
     """Model for main YAML configuration."""
 
-    global_params: YamlGlobalParams
+    global_params: GlobalParams
     columns: list[YamlColumns]
     transforms: list[YamlTransform]
     split: list[YamlSplit]
@@ -115,7 +115,7 @@ class YamlConfigDict(BaseModel):
 class YamlSplitConfigDict(BaseModel):
     """Model for sub-configuration generated from main config."""
 
-    global_params: YamlGlobalParams
+    global_params: GlobalParams
     columns: list[YamlColumns]
     transforms: list[YamlTransform]
     split: YamlSplit
@@ -124,7 +124,7 @@ class YamlSplitConfigDict(BaseModel):
 class YamlSplitTransformDict(BaseModel):
     """Model for sub-configuration generated from main config."""
 
-    global_params: YamlGlobalParams
+    global_params: GlobalParams
     columns: list[YamlColumns]
     transforms: YamlTransform
     split: YamlSplit
