@@ -44,7 +44,7 @@ def test_yaml_data_types() -> None:
     try:
         from stimulus.typing import (
             YamlColumns,
-            YamlColumnsEncoder,
+            ColumnsEncoder,
             YamlConfigDict,
             GlobalParams,
             YamlSchema,
