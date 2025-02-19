@@ -130,7 +130,7 @@ class SplitTransformDict(BaseModel):
     split: Split
 
 
-class YamlSchema(BaseModel):
+class Schema(BaseModel):
     """Model for validating YAML schema."""
 
     yaml_conf: ConfigDict
@@ -456,7 +456,7 @@ def check_yaml_schema(config_yaml: ConfigDict) -> str:
         ValueError: If validation fails
     """
     try:
-        YamlSchema(yaml_conf=config_yaml)
+        Schema(yaml_conf=config_yaml)
     except ValidationError as e:
         # Use logging instead of print for error handling
         raise ValueError("Wrong type on a field, see the pydantic report above") from e
