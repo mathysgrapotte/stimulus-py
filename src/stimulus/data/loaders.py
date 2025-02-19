@@ -30,16 +30,15 @@ class EncoderLoader:
         self.seed = seed
 
     def initialize_column_encoders_from_config(
-        self, column_config: yaml_data.YamlColumns
+        self, column_config: yaml_data.Columns
     ) -> None:
         """Build the loader from a config dictionary.
 
         Args:
-            column_config (yaml_data.YamlColumns): Configuration dictionary containing field names (column_name) and their encoder specifications.
+            column_config (yaml_data.Columns): Configuration dictionary containing field names (column_name) and their encoder specifications.
         """
         for field in column_config:
-            encoder = self.get_encoder(
-                field.encoder[0].name, field.encoder[0].params)
+            encoder = self.get_encoder(field.encoder[0].name, field.encoder[0].params)
             self.set_encoder_as_attribute(field.column_name, encoder)
 
     def get_function_encode_all(self, field_name: str) -> Any:
@@ -276,6 +275,5 @@ class SplitLoader:
         Args:
             split_config (yaml_data.YamlSplitConfigDict): Configuration dictionary containing split configurations.
         """
-        splitter = self.get_splitter(
-            split_config.split_method, split_config.params)
+        splitter = self.get_splitter(split_config.split_method, split_config.params)
         self.set_splitter_as_attribute(splitter)
