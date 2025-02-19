@@ -102,7 +102,7 @@ class Split(BaseModel):
     split_input_columns: list[str]
 
 
-class YamlConfigDict(BaseModel):
+class ConfigDict(BaseModel):
     """Model for main YAML configuration."""
 
     global_params: GlobalParams
@@ -133,7 +133,7 @@ class SplitTransformDict(BaseModel):
 class YamlSchema(BaseModel):
     """Model for validating YAML schema."""
 
-    yaml_conf: YamlConfigDict
+    yaml_conf: ConfigDict
 
 
 class SplitSchema(BaseModel):
@@ -238,7 +238,7 @@ def expand_transform_list_combinations(
     return sub_transforms
 
 
-def generate_split_configs(yaml_config: YamlConfigDict) -> list[SplitConfigDict]:
+def generate_split_configs(yaml_config: ConfigDict) -> list[SplitConfigDict]:
     """Generates all possible split configuration from a YAML config.
 
     Takes a YAML configuration that may contain parameter lists and splits,
@@ -266,8 +266,8 @@ def generate_split_configs(yaml_config: YamlConfigDict) -> list[SplitConfigDict]
             length will be the product of the number of parameter combinations
             and the number of splits.
     """
-    if isinstance(yaml_config, dict) and not isinstance(yaml_config, YamlConfigDict):
-        raise TypeError("Input must be a YamlConfigDict object")
+    if isinstance(yaml_config, dict) and not isinstance(yaml_config, ConfigDict):
+        raise TypeError("Input must be a ConfigDict object")
 
     sub_splits = yaml_config.split
     sub_configs = []
@@ -440,14 +440,14 @@ def dump_yaml_list_into_files(
             )
 
 
-def check_yaml_schema(config_yaml: YamlConfigDict) -> str:
+def check_yaml_schema(config_yaml: ConfigDict) -> str:
     """Validate YAML configuration fields have correct types.
 
     If the children field is specific to a parent, the children fields class is hosted in the parent fields class.
     If any field in not the right type, the function prints an error message explaining the problem and exits the python code.
 
     Args:
-        config_yaml: The YamlConfigDict containing the fields of the yaml configuration file
+        config_yaml: The ConfigDict containing the fields of the yaml configuration file
 
     Returns:
         str: Empty string if validation succeeds
