@@ -46,7 +46,7 @@ class TransformColumns(BaseModel):
     transformations: list[TransformColumnsTransformation]
 
 
-class YamlTransform(BaseModel):
+class Transform(BaseModel):
     """Model for transform configuration."""
 
     transformation_name: str
@@ -107,7 +107,7 @@ class YamlConfigDict(BaseModel):
 
     global_params: GlobalParams
     columns: list[Columns]
-    transforms: list[YamlTransform]
+    transforms: list[Transform]
     split: list[YamlSplit]
 
 
@@ -117,7 +117,7 @@ class YamlSplitConfigDict(BaseModel):
 
     global_params: GlobalParams
     columns: list[Columns]
-    transforms: list[YamlTransform]
+    transforms: list[Transform]
     split: YamlSplit
 
 
@@ -126,7 +126,7 @@ class YamlSplitTransformDict(BaseModel):
 
     global_params: GlobalParams
     columns: list[Columns]
-    transforms: YamlTransform
+    transforms: Transform
     split: YamlSplit
 
 
@@ -143,8 +143,8 @@ class YamlSplitSchema(BaseModel):
 
 
 def extract_transform_parameters_at_index(
-    transform: YamlTransform, index: int = 0
-) -> YamlTransform:
+    transform: Transform, index: int = 0
+) -> Transform:
     """Get a transform with parameters at the specified index.
 
     Args:
@@ -155,7 +155,7 @@ def extract_transform_parameters_at_index(
         A new transform with single parameter values at the specified index
     """
     # Create a copy of the transform
-    new_transform = YamlTransform(**transform.model_dump())
+    new_transform = Transform(**transform.model_dump())
 
     # Process each column and transformation
     for column in new_transform.columns:
@@ -174,8 +174,8 @@ def extract_transform_parameters_at_index(
 
 
 def expand_transform_parameter_combinations(
-    transform: YamlTransform,
-) -> list[YamlTransform]:
+    transform: Transform,
+) -> list[Transform]:
     """Get all possible transforms by extracting parameters at each valid index.
 
     For a transform with parameter lists, creates multiple new transforms, each containing
@@ -213,8 +213,8 @@ def expand_transform_parameter_combinations(
 
 
 def expand_transform_list_combinations(
-    transform_list: list[YamlTransform],
-) -> list[YamlTransform]:
+    transform_list: list[Transform],
+) -> list[Transform]:
     """Expands a list of transforms into all possible parameter combinations.
 
     Takes a list of transforms where each transform may contain parameter lists,
@@ -223,11 +223,11 @@ def expand_transform_list_combinations(
     create two transforms: one with 0.1/1 and another with 0.2/2.
 
     Args:
-        transform_list: A list of YamlTransform objects containing parameter lists
+        transform_list: A list of Transform objects containing parameter lists
             that need to be expanded into individual transforms.
 
     Returns:
-        list[YamlTransform]: A flattened list of transforms where each transform
+        list[Transform]: A flattened list of transforms where each transform
             has single parameter values instead of parameter lists. The length of
             the returned list will be the sum of the number of parameter combinations
             for each input transform.
