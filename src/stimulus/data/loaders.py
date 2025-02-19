@@ -166,12 +166,12 @@ class TransformLoader:
             field_value[data_transformer.__class__.__name__] = data_transformer
 
     def initialize_column_data_transformers_from_config(
-        self, transform_config: yaml_data.YamlTransform
+        self, transform_config: yaml_data.Transform
     ) -> None:
         """Build the loader from a config dictionary.
 
         Args:
-            transform_config (yaml_data.YamlTransform): Configuration dictionary containing transforms configurations.
+            transform_config (yaml_data.Transform): Configuration dictionary containing transforms configurations.
 
         Example:
             Given a YAML config like:
