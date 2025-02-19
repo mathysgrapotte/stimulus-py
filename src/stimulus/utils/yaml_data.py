@@ -133,13 +133,13 @@ class SplitTransformDict(BaseModel):
 class Schema(BaseModel):
     """Model for validating YAML schema."""
 
-    yaml_conf: ConfigDict
+    conf: ConfigDict
 
 
 class SplitSchema(BaseModel):
     """Model for validating a Split YAML schema."""
 
-    yaml_conf: SplitConfigDict
+    conf: SplitConfigDict
 
 
 def extract_transform_parameters_at_index(
@@ -238,7 +238,7 @@ def expand_transform_list_combinations(
     return sub_transforms
 
 
-def generate_split_configs(yaml_config: ConfigDict) -> list[SplitConfigDict]:
+def generate_split_configs(config: ConfigDict) -> list[SplitConfigDict]:
     """Generates all possible split configuration from a YAML config.
 
     Takes a YAML configuration that may contain parameter lists and splits,
@@ -257,7 +257,7 @@ def generate_split_configs(yaml_config: ConfigDict) -> list[SplitConfigDict]:
             split: [0.8, 0.2]
 
     Args:
-        yaml_config: The source YAML configuration containing transforms with
+        config: The source YAML configuration containing transforms with
             parameter lists and multiple splits.
 
     Returns:
@@ -266,17 +266,17 @@ def generate_split_configs(yaml_config: ConfigDict) -> list[SplitConfigDict]:
             length will be the product of the number of parameter combinations
             and the number of splits.
     """
-    if isinstance(yaml_config, dict) and not isinstance(yaml_config, ConfigDict):
+    if isinstance(config, dict) and not isinstance(yaml_config, ConfigDict):
         raise TypeError("Input must be a ConfigDict object")
 
-    sub_splits = yaml_config.split
+    sub_splits = config.split
     sub_configs = []
     for split in sub_splits:
         sub_configs.append(
             SplitConfigDict(
-                global_params=yaml_config.global_params,
-                columns=yaml_config.columns,
-                transforms=yaml_config.transforms,
+                global_params=config.global_params,
+                columns=config.columns,
+                transforms=config.transforms,
                 split=split,
             ),
         )
@@ -284,7 +284,7 @@ def generate_split_configs(yaml_config: ConfigDict) -> list[SplitConfigDict]:
 
 
 def generate_split_transform_configs(
-    yaml_config: SplitConfigDict,
+    config: SplitConfigDict,
 ) -> list[SplitTransformDict]:
     """Generates all the transform configuration for a given split
 
@@ -304,7 +304,7 @@ def generate_split_transform_configs(
             split: [0.7, 0.3]
 
     Args:
-        yaml_config: The source YAML configuration containing each
+        config: The source YAML configuration containing each
             a split with transforms with parameters lists
 
     Returns:
@@ -313,25 +313,25 @@ def generate_split_transform_configs(
             length will be the product of the number of parameter combinations
             and the number of splits.
     """
-    if isinstance(yaml_config, dict) and not isinstance(yaml_config, SplitConfigDict):
+    if isinstance(config, dict) and not isinstance(yaml_config, SplitConfigDict):
         raise TypeError("Input must be a list of YamlSubConfigDict")
 
-    sub_transforms = expand_transform_list_combinations(yaml_config.transforms)
+    sub_transforms = expand_transform_list_combinations(config.transforms)
     split_transform_config: list[SplitTransformDict] = []
     for transform in sub_transforms:
         split_transform_config.append(
             SplitTransformDict(
-                global_params=yaml_config.global_params,
-                columns=yaml_config.columns,
+                global_params=config.global_params,
+                columns=config.columns,
                 transforms=transform,
-                split=yaml_config.split,
+                split=config.split,
             )
         )
     return split_transform_config
 
 
 def dump_yaml_list_into_files(
-    yaml_list: list[SplitConfigDict],
+    config_list: list[SplitConfigDict],
     directory_path: str,
     base_name: str,
 ) -> None:
@@ -384,8 +384,8 @@ def dump_yaml_list_into_files(
     yaml.add_representer(type(None), represent_none, Dumper=CustomDumper)
     yaml.add_representer(list, custom_representer, Dumper=CustomDumper)
 
-    for i, yaml_dict in enumerate(yaml_list):
-        dict_data = yaml_dict.model_dump(exclude_none=True)
+    for i, config_dict in enumerate(config_list):
+        dict_data = config_dict.model_dump(exclude_none=True)
 
         def fix_params(input_dict: dict[str, Any]) -> dict[str, Any]:
             """Recursively process dictionary to properly handle params fields."""
@@ -440,14 +440,14 @@ def dump_yaml_list_into_files(
             )
 
 
-def check_yaml_schema(config_yaml: ConfigDict) -> str:
+def check_yaml_schema(config: ConfigDict) -> str:
     """Validate YAML configuration fields have correct types.
 
     If the children field is specific to a parent, the children fields class is hosted in the parent fields class.
     If any field in not the right type, the function prints an error message explaining the problem and exits the python code.
 
     Args:
-        config_yaml: The ConfigDict containing the fields of the yaml configuration file
+        config: The ConfigDict containing the fields of the yaml configuration file
 
     Returns:
         str: Empty string if validation succeeds
@@ -456,7 +456,7 @@ def check_yaml_schema(config_yaml: ConfigDict) -> str:
         ValueError: If validation fails
     """
     try:
-        Schema(yaml_conf=config_yaml)
+        Schema(conf=config)
     except ValidationError as e:
         # Use logging instead of print for error handling
         raise ValueError("Wrong type on a field, see the pydantic report above") from e
