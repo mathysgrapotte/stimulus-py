@@ -39,7 +39,7 @@ class TransformColumnsTransformation(BaseModel):
     ]  # Allow both list and float values
 
 
-class YamlTransformColumns(BaseModel):
+class TransformColumns(BaseModel):
     """Model for transform columns configuration."""
 
     column_name: str
@@ -50,13 +50,13 @@ class YamlTransform(BaseModel):
     """Model for transform configuration."""
 
     transformation_name: str
-    columns: list[YamlTransformColumns]
+    columns: list[TransformColumns]
 
     @field_validator("columns")
     @classmethod
     def validate_param_lists_across_columns(
-        cls, columns: list[YamlTransformColumns]
-    ) -> list[YamlTransformColumns]:
+        cls, columns: list[TransformColumns]
+    ) -> list[TransformColumns]:
         """Validate that parameter lists across columns have consistent lengths.
 
         Args:
