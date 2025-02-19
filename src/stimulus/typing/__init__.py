@@ -64,9 +64,7 @@ from stimulus.utils.yaml_model_schema import (
 
 # data/data_handlers.py
 
-DataManager: TypeAlias = (
-    DatasetManager | EncodeManager | SplitManager | TransformManager
-)
+DataManager: TypeAlias = DatasetManager | EncodeManager | SplitManager | TransformManager
 
 # data/experiments.py
 
