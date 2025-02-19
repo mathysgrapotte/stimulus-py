@@ -63,9 +63,7 @@ def main(config_yaml: str, out_dir_path: str) -> None:
     yaml_config_dict: SplitConfigDict = SplitConfigDict(**yaml_config)
 
     # Generate the yaml files for each transform
-    split_transform_configs: list[SplitTransformDict] = (
-        generate_split_transform_configs(yaml_config_dict)
-    )
+    split_transform_configs: list[SplitTransformDict] = generate_split_transform_configs(yaml_config_dict)
 
     # Dump all the YAML configs into files
     dump_yaml_list_into_files(split_transform_configs, out_dir_path, "test_transforms")
