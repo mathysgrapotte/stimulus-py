@@ -121,7 +121,7 @@ def transform_loader(
     """
     loader = loaders.TransformLoader()
     loader.initialize_column_data_transformers_from_config(
-        generate_sub_configs[0].transforms
+        generate_sub_configs[0].transforms,
     )
     return loader
 
@@ -327,24 +327,15 @@ def test_dataset_processor_apply_transformation_group(
     processor_control.data = processor_control.load_csv(titanic_csv_path)
 
     processor.apply_transformation_group(
-        transform_manager=TransformManager(transform_loader)
+        transform_manager=TransformManager(transform_loader),
     )
 
     assert processor.data["age"].to_list() != processor_control.data["age"].to_list()
     assert processor.data["fare"].to_list() != processor_control.data["fare"].to_list()
-    assert (
-        processor.data["parch"].to_list() == processor_control.data["parch"].to_list()
-    )
-    assert (
-        processor.data["sibsp"].to_list() == processor_control.data["sibsp"].to_list()
-    )
-    assert (
-        processor.data["pclass"].to_list() == processor_control.data["pclass"].to_list()
-    )
-    assert (
-        processor.data["embarked"].to_list()
-        == processor_control.data["embarked"].to_list()
-    )
+    assert processor.data["parch"].to_list() == processor_control.data["parch"].to_list()
+    assert processor.data["sibsp"].to_list() == processor_control.data["sibsp"].to_list()
+    assert processor.data["pclass"].to_list() == processor_control.data["pclass"].to_list()
+    assert processor.data["embarked"].to_list() == processor_control.data["embarked"].to_list()
     assert processor.data["sex"].to_list() == processor_control.data["sex"].to_list()
 
 
