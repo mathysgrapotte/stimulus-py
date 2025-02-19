@@ -46,7 +46,7 @@ def test_yaml_data_types() -> None:
             YamlColumns,
             YamlColumnsEncoder,
             YamlConfigDict,
-            YamlGlobalParams,
+            GlobalParams,
             YamlSchema,
             YamlSplit,
             YamlSplitConfigDict,
