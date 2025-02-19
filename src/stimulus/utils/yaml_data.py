@@ -21,7 +21,7 @@ class ColumnsEncoder(BaseModel):
     ]  # Allow both string and list values
 
 
-class YamlColumns(BaseModel):
+class Columns(BaseModel):
     """Model for column configuration."""
 
     column_name: str
@@ -106,7 +106,7 @@ class YamlConfigDict(BaseModel):
     """Model for main YAML configuration."""
 
     global_params: GlobalParams
-    columns: list[YamlColumns]
+    columns: list[Columns]
     transforms: list[YamlTransform]
     split: list[YamlSplit]
 
@@ -116,7 +116,7 @@ class YamlSplitConfigDict(BaseModel):
     """Model for sub-configuration generated from main config."""
 
     global_params: GlobalParams
-    columns: list[YamlColumns]
+    columns: list[Columns]
     transforms: list[YamlTransform]
     split: YamlSplit
 
@@ -125,7 +125,7 @@ class YamlSplitTransformDict(BaseModel):
     """Model for sub-configuration generated from main config."""
 
     global_params: GlobalParams
-    columns: list[YamlColumns]
+    columns: list[Columns]
     transforms: YamlTransform
     split: YamlSplit
 
