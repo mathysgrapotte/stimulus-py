@@ -38,7 +38,7 @@ from stimulus.utils.performance import Performance
 from stimulus.utils.yaml_data import (
     Columns,
     ColumnsEncoder,
-    YamlConfigDict,
+    ConfigDict,
     GlobalParams,
     YamlSchema,
     Split,
@@ -81,7 +81,7 @@ RayTuneData: TypeAlias = RayTuneMetrics | RayTuneOptimizer | RayTuneResult
 YamlData: TypeAlias = (
     Columns
     | ColumnsEncoder
-    | YamlConfigDict
+    | ConfigDict
     | GlobalParams
     | YamlSchema
     | Split
