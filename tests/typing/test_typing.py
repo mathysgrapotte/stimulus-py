@@ -53,7 +53,7 @@ def test_yaml_data_types() -> None:
             YamlSplitTransformDict,
             YamlTransform,
             YamlTransformColumns,
-            YamlTransformColumnsTransformation,
+            TransformColumnsTransformation,
         )
     except ImportError:
         pytest.fail("Failed to import YAML Data types")
