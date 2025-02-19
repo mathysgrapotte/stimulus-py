@@ -39,7 +39,7 @@ from stimulus.utils.yaml_data import (
     YamlColumns,
     YamlColumnsEncoder,
     YamlConfigDict,
-    YamlGlobalParams,
+    GlobalParams,
     YamlSchema,
     YamlSplit,
     YamlSplitConfigDict,
@@ -82,7 +82,7 @@ YamlData: TypeAlias = (
     YamlColumns
     | YamlColumnsEncoder
     | YamlConfigDict
-    | YamlGlobalParams
+    | GlobalParams
     | YamlSchema
     | YamlSplit
     | YamlSplitConfigDict
