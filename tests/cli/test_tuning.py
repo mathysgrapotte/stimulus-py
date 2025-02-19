@@ -13,7 +13,7 @@ import ray
 import yaml
 
 from src.stimulus.cli import tuning
-from src.stimulus.utils.yaml_data import YamlSplitTransformDict
+from src.stimulus.utils.yaml_data import SplitTransformDict
 
 
 @pytest.fixture
@@ -122,9 +122,9 @@ def test_tuning_main(
     assert os.path.exists(model_config), f"Model config not found at {model_config}"
 
     try:
-        config_dict: YamlSplitTransformDict
+        config_dict: SplitTransformDict
         with open(data_config) as f:
-            config_dict = YamlSplitTransformDict(**yaml.safe_load(f))
+            config_dict = SplitTransformDict(**yaml.safe_load(f))
 
         results_dir = Path("tests/test_data/titanic/test_results/").resolve()
         results_dir.mkdir(parents=True, exist_ok=True)
