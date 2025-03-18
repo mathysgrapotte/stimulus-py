@@ -90,11 +90,19 @@ class TextOneHotEncoder(AbstractEncoder):
         _sequence_to_array: transforms a sequence into a numpy array
     """
 
-    def __init__(self, alphabet: str = "acgt", *, convert_lowercase: bool = False, padding: bool = False) -> None:
+    def __init__(
+        self,
+        alphabet: str = "acgt",
+        dtype: torch.dtype = torch.float32,
+        *,
+        convert_lowercase: bool = False,
+        padding: bool = False,
+    ) -> None:
         """Initialize the TextOneHotEncoder class.
 
         Args:
             alphabet (str): the alphabet to one hot encode the data with.
+            dtype (torch.dtype): the data type of the encoded data. Default = torch.float32 (32-bit floating point)
 
         Raises:
             TypeError: If the input alphabet is not a string.
@@ -110,7 +118,7 @@ class TextOneHotEncoder(AbstractEncoder):
         self.alphabet = alphabet
         self.convert_lowercase = convert_lowercase
         self.padding = padding
-
+        self.dtype = dtype
         self.encoder = preprocessing.OneHotEncoder(
             categories=[list(alphabet)],
             handle_unknown="ignore",
@@ -190,7 +198,7 @@ class TextOneHotEncoder(AbstractEncoder):
         sequence_array = self._sequence_to_array(data)
         transformed = self.encoder.transform(sequence_array)
         numpy_array = np.squeeze(np.stack(transformed.toarray()))
-        return torch.from_numpy(numpy_array)
+        return torch.from_numpy(numpy_array).to(self.dtype)
 
     def encode_multiprocess(self, data: list[str]) -> list[torch.Tensor]:
         """Encodes a list of sequences using multiprocessing."""
