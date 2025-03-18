@@ -76,14 +76,19 @@ class Objective:
     def __call__(self, trial: optuna.Trial):
         """Execute a full training trial and return the objective metric value."""
         # Setup phase
+        logger.info(f"Starting trial {trial.number}")
+
         model_instance = self._setup_model(trial)
         optimizer = self._setup_optimizer(trial, model_instance)
         train_loader, val_loader = self._setup_data_loaders(trial)
         loss_dict = self._setup_loss_functions(trial)
 
+        logger.info(f"Trial {trial.number} setup complete, starting training loop")
+
         # Training loop
         batch_idx: int = 0
         metric_dict: dict = {}
+        last_report_batch = 0
 
         while batch_idx < self.max_batches:
             for x, y, _meta in train_loader:
@@ -111,11 +116,21 @@ class Objective:
                         raise
 
                 batch_idx += 1
+
                 # Compute objective periodically
                 if batch_idx % self.compute_objective_every_n_batches == 0:
                     # Evaluate current model performance
                     metric_dict = self.objective(model_instance, train_loader, val_loader, loss_dict)
-                    logger.info(f"Objective: {metric_dict} at batch {batch_idx}")
+                    # Log using Optuna's trial object for better integration with Optuna's logging
+                    trial.set_user_attr("latest_metrics", metric_dict)
+                    logger.info(f"Trial {trial.number} objective at batch {batch_idx}: {metric_dict}")
+
+                    # Calculate improvement since last report
+                    if last_report_batch > 0:
+                        batches_since_last = batch_idx - last_report_batch
+                        logger.info(f"Processed {batches_since_last} batches since last report")
+
+                    last_report_batch = batch_idx
 
                     # Report to Optuna
                     trial.report(metric_dict[self.target_metric], batch_idx)
@@ -124,6 +139,7 @@ class Objective:
 
                     # Check if trial should be pruned
                     if trial.should_prune():
+                        logger.info(f"Trial {trial.number} pruned at batch {batch_idx}")
                         self.save_checkpoint(trial, model_instance, optimizer)
                         raise optuna.TrialPruned()  # noqa: RSE102
 
@@ -131,6 +147,7 @@ class Objective:
                     break
 
         # Final checkpoint and return objective value
+        logger.info(f"Trial {trial.number} completed all {self.max_batches} batches")
         self.save_checkpoint(trial, model_instance, optimizer)
         return metric_dict[self.target_metric]
 
@@ -319,9 +336,43 @@ def tune_loop(
     Returns:
         The study object.
     """
+    logger.info(f"Starting optimization with {n_trials} trials")
+    logger.info(f"Optimization direction: {direction}")
+    logger.info(f"Pruner: {pruner.__class__.__name__}")
+    logger.info(f"Sampler: {sampler.__class__.__name__}")
+
     if storage is None:
         study = optuna.create_study(direction=direction, sampler=sampler, pruner=pruner)
     else:
         study = optuna.create_study(direction=direction, sampler=sampler, pruner=pruner, storage=storage)
-    study.optimize(objective, n_trials=n_trials)
+
+    # Add a callback to log trial information
+    def logging_callback(study: optuna.Study, trial: optuna.Trial) -> None:
+        """Log information about completed trials."""
+        if trial.state == optuna.trial.TrialState.COMPLETE:
+            logger.info(f"Trial {trial.number} finished with value: {trial.value}")
+            if len(trial.params) <= 10:  # Only log params if not too many
+                logger.info(f"Trial {trial.number} params: {trial.params}")
+            else:
+                logger.info(f"Trial {trial.number} has {len(trial.params)} parameters")
+
+        if study.best_trial and trial.number % 5 == 0:  # Log best trial info every 5 trials
+            logger.info(f"Best trial so far: #{study.best_trial.number} with value: {study.best_trial.value}")
+
+        if trial.state == optuna.trial.TrialState.PRUNED:
+            logger.info(f"Trial {trial.number} pruned")
+
+    try:
+        study.optimize(objective, n_trials=n_trials, callbacks=[logging_callback])
+    except KeyboardInterrupt:
+        logger.info("Optimization interrupted by user")
+
+    # Log final results
+    logger.info("Optimization finished")
+    if study.best_trial:
+        logger.info(f"Best trial: #{study.best_trial.number} with value: {study.best_trial.value}")
+        logger.info(f"Best parameters: {study.best_trial.params}")
+    else:
+        logger.warning("No trials completed successfully")
+
     return study
