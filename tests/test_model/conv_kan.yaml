@@ -1,5 +1,5 @@
 max_batches: 10
-compute_objective_every_n_batches: 1
+compute_objective_every_n_batches: 5
 n_trials: 5
 
 network_params:
@@ -52,7 +52,7 @@ loss_params:
 data_params:
   batch_size:
     params:
-      choices: [16, 32, 64, 128, 256, 512]
+      choices: [128, 256, 512]
     mode: categorical
 
 pruner:
