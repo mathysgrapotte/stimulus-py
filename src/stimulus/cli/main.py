@@ -292,6 +292,12 @@ def transform_csv(
     default="./optuna_results",
     help="Location for optuna results output directory",
 )
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose Optuna logging output",
+)
 def tune(
     data: str,
     model: str,
@@ -300,6 +306,8 @@ def tune(
     output: str,
     best_optimizer: str,
     optuna_results_dirpath: str,
+    *,
+    verbose: bool,
 ) -> None:
     """Run hyperparameter tuning for a model."""
     from stimulus.cli.tuning import tune as tune_func
@@ -312,4 +320,5 @@ def tune(
         optuna_results_dirpath=optuna_results_dirpath,
         best_model_path=output,
         best_optimizer_path=best_optimizer,
+        verbose=verbose,
     )

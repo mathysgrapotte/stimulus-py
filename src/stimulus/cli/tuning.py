@@ -58,6 +58,8 @@ def tune(
     optuna_results_dirpath: str = "./optuna_results",
     best_model_path: str = "best_model.safetensors",
     best_optimizer_path: str = "best_optimizer.pt",
+    *,
+    verbose: bool = False,
 ) -> None:
     """Run model hyperparameter tuning.
 
@@ -69,7 +71,34 @@ def tune(
         optuna_results_dirpath: Directory for optuna results.
         best_model_path: Path to write the best model to.
         best_optimizer_path: Path to write the best optimizer to.
+        verbose: Whether to enable verbose Optuna logging.
     """
+    # Configure Optuna logging if verbose mode is enabled
+    if verbose:
+        # Use Optuna's built-in logging configuration
+        optuna.logging.set_verbosity(optuna.logging.INFO)
+        # Make sure default handler is enabled
+        optuna.logging.enable_default_handler()
+        # Enable propagation to see logs in the console
+        optuna.logging.enable_propagation()
+
+        # Configure root logger to show INFO logs as well
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+
+        # Add a stream handler to print logs directly to console
+        if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
+            stream_handler = logging.StreamHandler()
+            stream_handler.setLevel(logging.INFO)
+            formatter = logging.Formatter("[%(levelname)1.1s %(asctime)s] %(message)s")
+            stream_handler.setFormatter(formatter)
+            root_logger.addHandler(stream_handler)
+
+        logger.info("Verbose Optuna logging enabled")
+    else:
+        # If not verbose, set to warning level to suppress most logs
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+
     # Load train and validation datasets
     train_dataset = load_data_config_from_path(data_path, data_config_path, split=0)
     validation_dataset = load_data_config_from_path(data_path, data_config_path, split=1)
