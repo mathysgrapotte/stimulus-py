@@ -285,19 +285,35 @@ class Objective:
 
 
 def get_device() -> torch.device:
-    """Get the device to use for training.
+    """Get the device to use depending on availability.
 
     Returns:
-        torch.device: device to use, cuda if available, cpu otherwise
+        torch.device: device to use.
     """
-    device: torch.device
+    if torch.backends.mps.is_available():
+        try:
+            # Try to allocate a small tensor on MPS to check if it works
+            device = torch.device("mps")
+            # Create a small tensor and move it to MPS as a test
+            test_tensor = torch.ones((1, 1)).to(device)
+            del test_tensor  # Free the memory
+            logger.info("Using MPS (Metal Performance Shaders) device")
+        except RuntimeError as e:
+            logger.warning(f"MPS available but failed to initialize: {e}")
+            logger.warning("Falling back to CPU")
+            return torch.device("cpu")
+        else:
+            return device
+
     if torch.cuda.is_available():
         device = torch.device("cuda")
-        logger.info("CUDA device available")
-    else:
-        device = torch.device("cpu")
-        logger.info("No CUDA device available, using CPU")
-    return device
+        gpu_name = torch.cuda.get_device_name(0)
+        memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        logger.info(f"Using GPU: {gpu_name} with {memory:.2f} GB memory")
+        return device
+
+    logger.info("Using CPU (GPU not available)")
+    return torch.device("cpu")
 
 
 def tune_loop(
