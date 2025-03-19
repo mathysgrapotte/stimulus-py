@@ -1,5 +1,7 @@
 """Test for encoders."""
 
+import logging
+
 import pytest
 import torch
 
@@ -9,6 +11,8 @@ from src.stimulus.data.encoding.encoders import (
     StrClassificationEncoder,
     TextOneHotEncoder,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TestTextOneHotEncoder:
@@ -42,38 +46,6 @@ class TestTextOneHotEncoder:
         assert encoder.alphabet == "acgt"
         assert encoder.convert_lowercase is False
         assert encoder.padding is False
-
-    # ---- Tests for _sequence_to_array ---- #
-
-    def test_sequence_to_array_with_non_string_input(
-        self,
-        encoder_default: TextOneHotEncoder,
-    ) -> None:
-        """Test _sequence_to_array with non-string input raises TypeError."""
-        with pytest.raises(TypeError, match="Expected string input for sequence"):
-            encoder_default._sequence_to_array(1234)  # type: ignore[arg-type]
-
-    def test_sequence_to_array_returns_correct_shape(
-        self,
-        encoder_default: TextOneHotEncoder,
-    ) -> None:
-        """Test _sequence_to_array returns array of correct shape."""
-        seq: str = "acgt"
-        arr = encoder_default._sequence_to_array(seq)
-        assert arr.shape == (4, 1)
-        assert (arr.flatten() == list(seq)).all()
-
-    def test_sequence_to_array_is_case_sensitive(self, encoder_default: TextOneHotEncoder) -> None:
-        """Test that _sequence_to_array preserves case when case sensitivity is enabled."""
-        seq = "AcGT"
-        arr = encoder_default._sequence_to_array(seq)
-        assert (arr.flatten() == list("AcGT")).all()
-
-    def test_sequence_to_array_is_lowercase(self, encoder_lowercase: TextOneHotEncoder) -> None:
-        """Test that _sequence_to_array converts to lowercase when enabled."""
-        seq = "AcGT"
-        arr = encoder_lowercase._sequence_to_array(seq)
-        assert (arr.flatten() == list("acgt")).all()
 
     # ---- Tests for encode ---- #
 

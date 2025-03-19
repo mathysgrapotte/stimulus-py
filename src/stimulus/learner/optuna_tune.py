@@ -8,6 +8,7 @@ from typing import Any
 
 import optuna
 import torch
+from optuna.trial import FrozenTrial
 from safetensors.torch import save_model as safe_save_model
 
 from stimulus.learner.interface import model_config_parser, model_schema
@@ -284,35 +285,19 @@ class Objective:
 
 
 def get_device() -> torch.device:
-    """Get the appropriate device (CPU/GPU) for computation.
+    """Get the device to use for training.
 
     Returns:
-        torch.device: The selected computation device
+        torch.device: device to use, cuda if available, cpu otherwise
     """
-    if torch.backends.mps.is_available():
-        try:
-            # Try to allocate a small tensor on MPS to check if it works
-            device = torch.device("mps")
-            # Create a small tensor and move it to MPS as a test
-            test_tensor = torch.ones((1, 1)).to(device)
-            del test_tensor  # Free the memory
-            logger.info("Using MPS (Metal Performance Shaders) device")
-        except RuntimeError as e:
-            logger.warning(f"MPS available but failed to initialize: {e}")
-            logger.warning("Falling back to CPU")
-            return torch.device("cpu")
-        else:
-            return device
-
+    device: torch.device
     if torch.cuda.is_available():
         device = torch.device("cuda")
-        gpu_name = torch.cuda.get_device_name(0)
-        memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-        logger.info(f"Using GPU: {gpu_name} with {memory:.2f} GB memory")
-        return device
-
-    logger.info("Using CPU (GPU not available)")
-    return torch.device("cpu")
+        logger.info("CUDA device available")
+    else:
+        device = torch.device("cpu")
+        logger.info("No CUDA device available, using CPU")
+    return device
 
 
 def tune_loop(
@@ -323,40 +308,43 @@ def tune_loop(
     direction: str,
     storage: optuna.storages.BaseStorage | None = None,
 ) -> optuna.Study:
-    """Run the tuning loop.
+    """Run optimization loop.
 
     Args:
-        objective: The objective function to optimize.
-        pruner: The pruner to use.
-        sampler: The sampler to use.
-        n_trials: The number of trials to run.
-        direction: The direction to optimize.
-        storage: The storage to use.
+        objective: The objective to optimize
+        pruner: The pruner to use
+        sampler: The sampler to use
+        n_trials: Number of trials to run
+        direction: Direction to optimize in
+        storage: Optional storage to use
 
     Returns:
-        The study object.
+        optuna.Study: The study object containing results
     """
-    logger.info(f"Starting optimization with {n_trials} trials")
-    logger.info(f"Optimization direction: {direction}")
-    logger.info(f"Pruner: {pruner.__class__.__name__}")
-    logger.info(f"Sampler: {sampler.__class__.__name__}")
+    # Constants for tuning parameters
+    max_params_to_log = 10
+    log_best_trial_every_n = 5
 
-    if storage is None:
-        study = optuna.create_study(direction=direction, sampler=sampler, pruner=pruner)
-    else:
-        study = optuna.create_study(direction=direction, sampler=sampler, pruner=pruner, storage=storage)
+    # Create a study object, force the sampler and pruner
+    study = optuna.create_study(
+        direction=direction,
+        pruner=pruner,
+        sampler=sampler,
+        storage=storage,
+        load_if_exists=True,
+    )
 
-    # Add a callback to log trial information
-    def logging_callback(study: optuna.Study, trial: optuna.Trial) -> None:
+    # Callback for logging information
+    def logging_callback(study: optuna.Study, trial: FrozenTrial) -> None:
         """Log information about completed trials."""
         if trial.state == optuna.trial.TrialState.COMPLETE:
             logger.info(f"Trial {trial.number} finished with value: {trial.value}")
-            if len(trial.params) <= 10:  # Only log params if not too many
+            if len(trial.params) <= max_params_to_log:  # Only log params if not too many
                 logger.info(f"Trial {trial.number} params: {trial.params}")
             else:
                 logger.info(f"Trial {trial.number} has {len(trial.params)} parameters")
 
-        if study.best_trial and trial.number % 5 == 0:  # Log best trial info every 5 trials
+        if study.best_trial and trial.number % log_best_trial_every_n == 0:  # Log best trial info every 5 trials
             logger.info(f"Best trial so far: #{study.best_trial.number} with value: {study.best_trial.value}")
 
         if trial.state == optuna.trial.TrialState.PRUNED:

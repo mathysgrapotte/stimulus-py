@@ -1,6 +1,6 @@
-max_batches: 10
+max_batches: 20
 compute_objective_every_n_batches: 5
-n_trials: 5
+n_trials: 100
 
 network_params:
   conv_kernel_number:
@@ -66,5 +66,5 @@ sampler:
   params:
 
 objective:
-  metric: val_rocauc
-  direction: maximize
+  metric: val_loss
+  direction: minimize

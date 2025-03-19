@@ -11,6 +11,20 @@ import torch.nn.functional as F
 from torch import nn
 
 
+def diagnose_gradient_flow(model, threshold=1e-6):
+    total_params = 0
+    zero_grad_params = []
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            total_params += 1
+            if param.grad is None or param.grad.norm() < threshold:
+                zero_grad_params.append(name)
+    if zero_grad_params:
+        print(
+            f"Gradient flow warning: {len(zero_grad_params)}/{total_params} parameters have near-zero gradients: {zero_grad_params}"
+        )
+
+
 class KANLinear(torch.nn.Module):
     def __init__(
         self,
@@ -49,6 +63,9 @@ class KANLinear(torch.nn.Module):
                 torch.Tensor(out_features, in_features),
             )
 
+        # Add a bias parameter to help break symmetry
+        self.bias = torch.nn.Parameter(torch.Tensor(out_features))
+
         self.scale_noise = scale_noise
         self.scale_base = scale_base
         self.scale_spline = scale_spline
@@ -60,6 +77,8 @@ class KANLinear(torch.nn.Module):
 
     def reset_parameters(self):
         torch.nn.init.kaiming_uniform_(self.base_weight, a=math.sqrt(5) * self.scale_base)
+        # Initialize bias with small negative values to produce outputs near zero before sigmoid
+        torch.nn.init.uniform_(self.bias, -0.1, 0.1)
         with torch.no_grad():
             noise = (
                 (torch.rand(self.grid_size + 1, self.in_features, self.out_features) - 1 / 2)
@@ -148,12 +167,10 @@ class KANLinear(torch.nn.Module):
         x = x.reshape(-1, self.in_features)
 
         base_output = F.linear(self.base_activation(x), self.base_weight)
-        spline_output = F.linear(
-            self.b_splines(x).view(x.size(0), -1),
-            self.scaled_spline_weight.view(self.out_features, -1),
-        )
-        output = base_output + spline_output
-
+        spline_input = self.b_splines(x).view(x.size(0), -1)
+        spline_output = F.linear(spline_input, self.scaled_spline_weight.view(self.out_features, -1))
+        device = x.device
+        output = base_output + spline_output + self.bias.to(device).unsqueeze(0)
         output = output.reshape(*original_shape[:-1], self.out_features)
         return output
 
@@ -289,8 +306,13 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
             in_channels=4,
             out_channels=conv_kernel_number,
             kernel_size=conv_kernel_size,
-            bias=False,
+            bias=True,  # Enable bias for more flexibility
         )
+        # Initialize conv weights to small values to start
+        nn.init.xavier_uniform_(self.conv1d.weight, gain=0.01)
+        if hasattr(self.conv1d, "bias") and self.conv1d.bias is not None:
+            nn.init.zeros_(self.conv1d.bias)
+
         self.relu = nn.ReLU()
         self.kan = KAN(
             [(sequence_length - (conv_kernel_size - 1)) * conv_kernel_number] + kan_layers_hidden + [1],
@@ -298,19 +320,42 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
         )
         self.sigmoid = nn.Sigmoid()
 
+        # Register buffers instead of parameters for device consistency
+        self.register_buffer("class_balance_logit", torch.tensor(0.0))
+        self.register_buffer("logit_scale", torch.tensor(1.0))
+        self._is_set_up = False
+
     def forward(self, dna: torch.Tensor) -> dict:
         x = dna.squeeze(1).permute(0, 2, 1).to(torch.float32)
         x = self.conv1d(x)
         x = self.relu(x)
         x = x.reshape(x.shape[0], x.shape[1] * x.shape[2])
         x = self.kan(x)
+
+        # Scale logits and apply class balance term - ensure same device
+        device = x.device
+        x = x * self.logit_scale.to(device) + self.class_balance_logit.to(device)
+
         x = self.sigmoid(x)
+
         x = x.squeeze()
         if x.dim() == 0:
             x = x.unsqueeze(0)
         return x
 
     def compute_loss(self, output: torch.Tensor, binding: torch.Tensor, loss_fn: Callable) -> torch.Tensor:
+        # Adjust class balance parameter during training based on batch statistics
+        if self.training and not self._is_set_up:
+            # Calculate the logit adjustment based on positive/negative ratio
+            pos_ratio = binding.mean().item()
+            if pos_ratio > 0 and pos_ratio < 1:  # Only adjust if we have mixed classes
+                # Adjust balance logit based on class distribution
+                device = output.device
+                balance_adjustment = torch.log(torch.tensor(pos_ratio / (1 - pos_ratio), device=device))
+                # Set adjustment with negative so predictions start balanced
+                self.class_balance_logit.copy_(-balance_adjustment)
+                self._is_set_up = True
+
         return loss_fn(output.squeeze(), binding.squeeze())
 
     def batch(
@@ -333,5 +378,8 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        if self.training and torch.rand(1).item() < 0.1:
+            diagnose_gradient_flow(self)
 
         return loss, {"binding": output}

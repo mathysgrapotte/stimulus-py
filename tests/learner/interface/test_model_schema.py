@@ -69,7 +69,7 @@ def test_model_schema(get_config: dict[str, Any]) -> None:
 
     # Test data_params
     assert isinstance(model.data_params["batch_size"], model_schema.TunableParameter)
-    assert model.data_params["batch_size"].params["choices"] == [16, 32, 64, 128, 256, 512]
+    assert model.data_params["batch_size"].params["choices"] == [128, 256, 512]
     assert model.data_params["batch_size"].mode == "categorical"
 
     # Test pruner and sampler
@@ -81,5 +81,5 @@ def test_model_schema(get_config: dict[str, Any]) -> None:
     assert model.sampler.params is None
 
     # Test objective
-    assert model.objective.metric == "val_rocauc"
-    assert model.objective.direction == "maximize"
+    assert model.objective.metric == "val_loss"
+    assert model.objective.direction == "minimize"

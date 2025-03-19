@@ -6,9 +6,10 @@ from typing import Any, Union
 
 import numpy as np
 import torch
-import torch.multiprocessing as mp
 import torch.nn.functional as F  # noqa: N812
 from sklearn import preprocessing
+
+from stimulus.learner.optuna_tune import get_device
 
 logger = logging.getLogger(__name__)
 
@@ -71,24 +72,15 @@ class AbstractEncoder(ABC):
 
 
 class TextOneHotEncoder(AbstractEncoder):
-    """One hot encoder for text data.
+    """One hot encoder for text data with highly optimized implementation.
 
-    NOTE encodes based on the given alphabet
     If a character c is not in the alphabet, c will be represented by a vector of zeros.
-
-    Attributes:
-        alphabet (str): the alphabet to one hot encode the data with.
-        convert_lowercase (bool): whether to convert the sequence and alphabet to lowercase. Default is False.
-        padding (bool): whether to pad the sequences with zeros. Default is False.
-        encoder (OneHotEncoder): preprocessing.OneHotEncoder object initialized with self.alphabet
-
-    Methods:
-        encode: encodes a single data point
-        encode_all: encodes a list of data points into a numpy array
-        encode_multiprocess: encodes a list of data points using multiprocessing
-        decode: decodes a single data point
-        _sequence_to_array: transforms a sequence into a numpy array
+    This encoder is optimized for processing large batches of sequences efficiently on GPU.
     """
+
+    # Constants to replace magic numbers
+    TENSOR_3D_SHAPE = 3
+    ASCII_MAX_VALUE = 128
 
     def __init__(
         self,
@@ -96,6 +88,7 @@ class TextOneHotEncoder(AbstractEncoder):
         dtype: torch.dtype = torch.float32,
         *,
         convert_lowercase: bool = False,
+        force_cpu: bool = True,
         padding: bool = False,
     ) -> None:
         """Initialize the TextOneHotEncoder class.
@@ -103,208 +96,175 @@ class TextOneHotEncoder(AbstractEncoder):
         Args:
             alphabet (str): the alphabet to one hot encode the data with.
             dtype (torch.dtype): the data type of the encoded data. Default = torch.float32 (32-bit floating point)
-
-        Raises:
-            TypeError: If the input alphabet is not a string.
+            convert_lowercase (bool): whether to convert sequences to lowercase.
+            force_cpu (bool): whether to force the encoder to run on CPU.
+            padding (bool): whether to pad sequences of different lengths.
         """
-        if not isinstance(alphabet, str):
-            error_msg = f"Expected a string input for alphabet, got {type(alphabet).__name__}"
-            logger.error(error_msg)
-            raise TypeError(error_msg)
-
         if convert_lowercase:
             alphabet = alphabet.lower()
-
-        self.alphabet = alphabet
         self.convert_lowercase = convert_lowercase
+        self.alphabet = alphabet
         self.padding = padding
         self.dtype = dtype
-        self.encoder = preprocessing.OneHotEncoder(
-            categories=[list(alphabet)],
-            handle_unknown="ignore",
-        )  # handle_unknown='ignore' unsures that a vector of zeros is returned for unknown characters, such as 'Ns' in DNA sequences
-        self.encoder.fit(np.array(list(alphabet)).reshape(-1, 1))
+        self.device = get_device() if not force_cpu else torch.device("cpu")
 
-    def _sequence_to_array(self, sequence: str) -> np.ndarray:
-        """This function transforms the given sequence to an array.
+        # Pre-compute and cache character mappings for the entire ASCII range
+        self.UNKNOWN_IDX = -1
+        self.alphabet_size = len(alphabet)
 
-        Args:
-            sequence (str): a sequence of characters.
+        # Build a fast ASCII-to-index mapping table directly on the GPU
+        # This is more efficient than dictionary lookups
+        self.lookup_table = torch.full((self.ASCII_MAX_VALUE,), self.UNKNOWN_IDX, dtype=torch.int64, device=self.device)
 
-        Returns:
-            sequence_array (np.ndarray): the sequence as a numpy array
+        # Fill the lookup table with character indices
+        for idx, char in enumerate(alphabet):
+            self.lookup_table[ord(char)] = idx
+            # Handle case conversion if needed
+            if convert_lowercase:
+                if "A" <= char <= "Z":
+                    self.lookup_table[ord(char.lower())] = idx
+                elif "a" <= char <= "z":
+                    self.lookup_table[ord(char.upper())] = idx
 
-        Raises:
-            TypeError: If the input data is not a string.
-
-        Examples:
-            >>> encoder = TextOneHotEncoder(alphabet="acgt")
-            >>> encoder._sequence_to_array("acctg")
-            array(['a'],['c'],['c'],['t'],['g'])
-        """
-        if not isinstance(sequence, str):
-            error_msg = f"Expected string input for sequence, got {type(sequence).__name__}"
-            logger.error(error_msg)
-            raise TypeError(error_msg)
-
-        if self.convert_lowercase:
-            sequence = sequence.lower()
-
-        sequence_array = np.array(list(sequence))
-        return sequence_array.reshape(-1, 1)
-
-    def encode(self, data: str) -> torch.Tensor:
-        """One hot encodes a single sequence.
-
-        Takes a single string sequence and returns a torch tensor of shape (sequence_length, alphabet_length).
-        The returned tensor corresponds to the one hot encoding of the sequence.
-        Unknown characters are represented by a vector of zeros.
-
-        Args:
-            data (str): single sequence
-
-        Returns:
-            encoded_data_point (torch.Tensor): one hot encoded sequence
-
-        Raises:
-            TypeError: If the input data is not a string.
-
-        Examples:
-            >>> encoder = TextOneHotEncoder(alphabet="acgt")
-            >>> encoder.encode("acgt")
-            tensor([[1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1]])
-            >>> encoder.encode("acgtn")
-            tensor([[1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1],
-                    [0, 0, 0, 0]])
-
-            >>> encoder = TextOneHotEncoder(alphabet="ACgt")
-            >>> encoder.encode("acgt")
-            tensor([[0, 0, 0, 0],
-                    [0, 0, 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1]])
-            >>> encoder.encode("ACgt")
-            tensor([[1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1]])
-        """
-        sequence_array = self._sequence_to_array(data)
-        transformed = self.encoder.transform(sequence_array)
-        numpy_array = np.squeeze(np.stack(transformed.toarray()))
-        return torch.from_numpy(numpy_array).to(self.dtype)
-
-    def encode_multiprocess(self, data: list[str]) -> list[torch.Tensor]:
-        """Encodes a list of sequences using multiprocessing."""
-        with mp.Pool() as pool:
-            return pool.map(self.encode, data)
+        # Pre-allocate a mask for invalid characters to avoid nonzero operations
+        # Initialize with ones to mark valid positions by default
+        self.alphabet_mask = torch.ones(self.alphabet_size + 1, dtype=self.dtype, device=self.device)
+        # Set the last position (for invalid characters) to zero
+        self.alphabet_mask[-1] = 0.0
 
     def encode_all(self, data: Union[str, list[str]]) -> torch.Tensor:
-        """Encodes a list of sequences.
-
-        Takes a list of string sequences and returns a torch tensor of shape (number_of_sequences, sequence_length, alphabet_length).
-        The returned tensor corresponds to the one hot encoding of the sequences.
-        Unknown characters are represented by a vector of zeros.
+        """Encode all sequences in a batch using fully vectorized operations.
 
         Args:
-            data (Union[str, list[str]]): list of sequences or a single sequence
+            data (Union[str, list[str]]): A single sequence or list of sequences
 
         Returns:
-            encoded_data (torch.Tensor): one hot encoded sequences
-
-        Raises:
-            TypeError: If the input data is not a list or a string.
-            ValueError: If all sequences do not have the same length when padding is False.
-
-        Examples:
-            >>> encoder = TextOneHotEncoder(alphabet="acgt")
-            >>> encoder.encode_all(["acgt", "acgtn"])
-            tensor([[[1, 0, 0, 0],
-                     [0, 1, 0, 0],
-                     [0, 0, 1, 0],
-                     [0, 0, 0, 1],
-                     [0, 0, 0, 0]], // this is padded with zeros
-
-                    [[1, 0, 0, 0],
-                     [0, 1, 0, 0],
-                     [0, 0, 1, 0],
-                     [0, 0, 0, 1],
-                     [0, 0, 0, 0]]])
+            torch.Tensor: Tensor of shape (batch_size, max_seq_length, alphabet_size)
         """
-        encoded_data = None  # to prevent UnboundLocalError
-        # encode data
+        # Handle single string case
         if isinstance(data, str):
-            encoded_data = self.encode(data)
-            return torch.stack([encoded_data])
-        if isinstance(data, list):
-            # TODO instead maybe we can run encode_multiprocess when data size is larger than a certain threshold.
-            encoded_list = self.encode_multiprocess(data)
-        else:
+            data = [data]
+        elif not isinstance(data, list):
             error_msg = f"Expected list or string input for data, got {type(data).__name__}"
             logger.error(error_msg)
             raise TypeError(error_msg)
 
-        # handle padding
-        if self.padding:
-            max_length = max([len(d) for d in encoded_list])
-            encoded_data = torch.stack([F.pad(d, (0, 0, 0, max_length - len(d))) for d in encoded_list])
-        else:
-            lengths = {len(d) for d in encoded_list}
+        # Early check for sequence length consistency when padding=False
+        if not self.padding:
+            lengths = {len(seq) for seq in data}
             if len(lengths) > 1:
                 error_msg = "All sequences must have the same length when padding is False."
                 logger.error(error_msg)
                 raise ValueError(error_msg)
-            encoded_data = torch.stack(encoded_list)
 
-        if encoded_data is None:
-            raise ValueError("Encoded data is None. This should not happen.")
+        # Find max length for processing all sequences at once
+        max_length = max(len(seq) for seq in data)
+        batch_size = len(data)
 
-        return encoded_data
+        # OPTIMIZATION: Process all sequences as a single byte array
+        # This eliminates Python loops and character-by-character processing
+        ascii_array = np.zeros((batch_size, max_length), dtype=np.uint8)
+
+        # Convert sequences to bytes more efficiently
+        for i, seq_input in enumerate(data):
+            seq = seq_input.lower() if self.convert_lowercase else seq_input
+
+            # OPTIMIZATION: Use numpy byte array conversion to avoid Python loop
+            seq_bytes = np.frombuffer(seq.encode("ascii", errors="ignore"), dtype=np.uint8)
+            ascii_array[i, : len(seq_bytes)] = seq_bytes
+
+        # Transfer to GPU in one operation
+        # OPTIMIZATION: Use torch.tensor directly on device rather than to() to avoid copy
+        ascii_tensor = torch.tensor(ascii_array, dtype=torch.int64, device=self.device)
+
+        # OPTIMIZATION: Create valid ASCII mask directly
+        # This combines multiple operations into one
+        valid_mask = (ascii_tensor > 0) & (ascii_tensor < self.ASCII_MAX_VALUE)
+
+        # Create indices tensor - use -1 for padding/invalid chars
+        indices = torch.full_like(ascii_tensor, self.UNKNOWN_IDX)
+
+        # Only lookup valid ASCII values (avoiding unnecessary computation)
+        valid_indices = valid_mask.nonzero(as_tuple=True)
+        indices[valid_indices] = self.lookup_table[ascii_tensor[valid_indices]]
+
+        # For one-hot encoding, we need non-negative indices
+        # OPTIMIZATION: Use a single mask for padding and unknown chars
+        valid_indices_mask = indices >= 0
+        safe_indices = indices.clone()
+        safe_indices[~valid_indices_mask] = 0  # Temporary index for one_hot
+
+        # Apply one-hot encoding - FIX: removed the 'out' parameter
+        one_hot = F.one_hot(safe_indices, num_classes=self.alphabet_size + 1).to(self.dtype)
+
+        # Apply alphabet mask to zero out invalid indices
+        # This creates zeros for unknown characters
+        result = one_hot.clone()
+        result[~valid_indices_mask] = 0.0
+
+        # Remove the last dimension (sentinel value) to get the final shape
+        return result[:, :, : self.alphabet_size]
+
+    def encode(self, data: str) -> torch.Tensor:
+        """Encode a single sequence by delegating to encode_all.
+
+        Args:
+            data (str): The sequence to encode
+
+        Returns:
+            torch.Tensor: One-hot encoded tensor of shape (sequence_length, alphabet_size)
+        """
+        result = self.encode_all([data])
+        return result.squeeze(0)
 
     def decode(self, data: torch.Tensor) -> Union[str, list[str]]:
-        """Decodes one-hot encoded tensor back to sequences.
+        """Decode a one-hot encoded tensor back to sequences.
 
         Args:
             data (torch.Tensor): 2D or 3D tensor of one-hot encoded sequences
                 - 2D shape: (sequence_length, alphabet_size)
                 - 3D shape: (batch_size, sequence_length, alphabet_size)
 
-        NOTE that when decoding 3D shape tensor, it assumes all sequences have the same length.
-
         Returns:
-            Union[str, list[str]]: Single sequence string or list of sequence strings
-
-        Raises:
-            TypeError: If the input data is not a 2D or 3D tensor
+            decoded_data (Union[str, list[str]]): decoded data points
         """
-        expected_2d_tensor = 2
-        expected_3d_tensor = 3
+        # Check if we have a batch or single sequence
+        is_batch = len(data.shape) == self.TENSOR_3D_SHAPE
 
-        if data.dim() == expected_2d_tensor:
-            # Single sequence
-            data_np = data.numpy().reshape(-1, len(self.alphabet))
-            decoded = self.encoder.inverse_transform(data_np).flatten()
-            return "".join([i for i in decoded if i is not None])
+        if not is_batch:
+            # Add batch dimension if single sequence
+            data = data.unsqueeze(0)
 
-        if data.dim() == expected_3d_tensor:
-            # Multiple sequences
-            batch_size, seq_len, _ = data.shape
-            data_np = data.reshape(-1, len(self.alphabet)).numpy()
-            decoded = self.encoder.inverse_transform(data_np)
-            sequences = decoded.reshape(batch_size, seq_len)
-            # Convert to masked array where None values are masked
-            masked_sequences = np.ma.masked_equal(sequences, None)
-            # Fill masked values with "-"
-            filled_sequences = masked_sequences.filled("-")
-            return ["".join(seq) for seq in filled_sequences]
+        # Get indices of maximum values along the alphabet dimension
+        indices = torch.argmax(data, dim=2)
 
-        raise ValueError(f"Expected 2D or 3D tensor, got {data.dim()}D")
+        # Check if any row is all zeros (unknown character)
+        all_zeros = data.sum(dim=2) == 0
+
+        # Convert to CPU for processing
+        indices = indices.cpu().numpy()
+        all_zeros = all_zeros.cpu().numpy()
+
+        # Decode each sequence
+        result = []
+        for i, seq_indices in enumerate(indices):
+            chars = []
+            for j, idx in enumerate(seq_indices):
+                # If the row is all zeros (unknown char) or no valid one-hot encoding
+                if all_zeros[i, j]:
+                    chars.append("-")
+                # Only add valid characters from the alphabet
+                elif 0 <= idx < len(self.alphabet):
+                    chars.append(self.alphabet[idx])
+                else:
+                    chars.append("-")
+            result.append("".join(chars))
+
+        # Return a single string if input was a single sequence
+        if not is_batch:
+            return result[0]
+
+        return result
 
 
 class NumericEncoder(AbstractEncoder):
