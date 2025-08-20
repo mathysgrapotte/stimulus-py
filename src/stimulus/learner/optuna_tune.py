@@ -124,12 +124,14 @@ class Objective:
         # Training loop
         batch_idx: int = 0
         metric_dict: dict = {}
+        logger.info(f"Starting training loop with max_samples={self.max_samples} and batch_size={batch_size}")
+        logger.info(f"Validation every {self.compute_objective_every_n_samples // batch_size} batches")
 
         while batch_idx * batch_size < self.max_samples:
-            logger.info(f"Training batch {batch_idx}")
             nb_computed_samples = 0
 
             for batch in train_loader:
+                logger.info(f"Training batch {batch_idx} out of {self.max_samples // batch_size}")
                 # set model in train mode
                 model_instance.train()
                 # Move all tensors to device (sample_id is now an integer tensor)
@@ -159,6 +161,8 @@ class Objective:
                         model_instance=model_instance,
                         train_loader=train_loader,
                         val_loader=val_loader,
+                        writer=curve_writer,
+                        global_step=batch_idx,
                     )
                     logger.info(f"Objective: {metric_dict} at batch {batch_idx}")
 
@@ -169,11 +173,23 @@ class Objective:
                     # Check if trial should be pruned
                     if trial.should_prune():
                         self.save_checkpoint(trial, model_instance, optimizer, complete_suggestions)
-                        self.root_writer.add_hparams(model_suggestions, metric_dict, run_name=f"trial-{trial.number}")
-                        self.root_writer.add_hparams(optimizer_suggestions, metric_dict, run_name=f"trial-{trial.number}")
+                        # save hparams
+                        merged_suggestions = {**model_suggestions, **optimizer_suggestions}
+                        self.root_writer.add_hparams(merged_suggestions, metric_dict, run_name=f"trial-{trial.number}")
                         raise optuna.TrialPruned()  # noqa: RSE102
 
                 if batch_idx * batch_size >= self.max_samples:
+                    logger.info(f"Reached max_samples limit: {batch_idx*batch_size}/{self.max_samples} samples")
+                    # compute objective at end
+                    metric_dict = self.objective(
+                        model_instance=model_instance,
+                        train_loader=train_loader,
+                        val_loader=val_loader,
+                        writer=curve_writer,
+                        global_step=batch_idx,
+                    )
+                    logger.info(f"Objective: {metric_dict} at batch {batch_idx}")
+                    trial.report(metric_dict[self.target_metric], batch_idx)
                     break
 
                     
@@ -185,13 +201,16 @@ class Objective:
                 train_loader=train_loader,
                 val_loader=val_loader,
                 device=self.device,
+                writer=curve_writer,
+                global_step=batch_idx,
             )
             for metric_name, metric_value in metric_dict.items():
                 trial.set_user_attr(metric_name, metric_value)
 
         # Final checkpoint and return objective value
-        self.root_writer.add_hparams(model_suggestions, metric_dict, run_name=f"trial-{trial.number}")
-        self.root_writer.add_hparams(optimizer_suggestions, metric_dict, run_name=f"trial-{trial.number}")
+        # Merge model and optimizer suggestions into a single flat dict
+        merged_suggestions = {**model_suggestions, **optimizer_suggestions}
+        self.root_writer.add_hparams(merged_suggestions, metric_dict, run_name=f"trial-{trial.number}")
         self.save_checkpoint(trial, model_instance, optimizer, complete_suggestions)
         return metric_dict[self.target_metric]
 
@@ -334,12 +353,14 @@ class Objective:
         model_instance: torch.nn.Module,
         train_loader: torch.utils.data.DataLoader,
         val_loader: torch.utils.data.DataLoader,
+        writer: SummaryWriter,
+        global_step: int,
     ) -> dict[str, float]:
         """Compute the objective metric(s) for the tuning process.
 
         The objectives are outputed by the model's batch function in the form of loss, metric_dictionary.
         """
-        val_metrics = self.get_metrics(model_instance, val_loader)
+        val_metrics = self.get_metrics(model_instance, val_loader, writer=writer, global_step=global_step)
 
         # add train_ and val_ prefix to related keys.
         return {
@@ -350,28 +371,31 @@ class Objective:
         self,
         model_instance: torch.nn.Module,
         data_loader: torch.utils.data.DataLoader,
+        writer: SummaryWriter,
+        global_step: int,
     ) -> dict[str, float]:
         """Compute the objective metric(s) for the tuning process."""
 
         predictions = []
         targets = []
 
-        batch_idx = 0
+        val_batch_idx = 0
         for batch in data_loader:
-            logger.info(f"Processing validation batch {batch_idx} out of {len(data_loader)}")
+            logger.info(f"Processing validation batch {val_batch_idx} out of {len(data_loader)}")
             # Move all tensors to device (sample_id is now an integer tensor)
             logger.info(f"Moving batch to device: {self.device}")
             device_batch = self._move_batch_to_device(batch)
             # Perform a batch update
             prediction, target, _loss, _metrics = model_instance.inference(batch=device_batch)
-            logger.info(f"Batch {batch_idx} inference complete")
-            predictions.append(prediction.detach().cpu().numpy())
-            targets.append(target.detach().cpu().numpy())
-            logger.info(f"Batch {batch_idx} processed, predictions and targets collected")
+            logger.info(f"Batch {val_batch_idx} inference complete")
+            predictions.append(prediction)
+            targets.append(target)
+            logger.info(f"Batch {val_batch_idx} processed, predictions and targets collected")
+            val_batch_idx += 1
 
         logger.info("All batches processed, aggregating predictions and targets")
-        predictions = np.vstack(predictions)
-        true = np.vstack(targets)
+        predictions = torch.vstack(predictions).detach().cpu().numpy()
+        true = torch.vstack(targets).detach().cpu().numpy()
 
         true_with_control = np.concatenate([data_loader.dataset.control_cells, true], axis=0)  
         pred_with_control = np.concatenate([data_loader.dataset.control_cells, predictions], axis=0)
@@ -422,6 +446,10 @@ class Objective:
         average_overlap = np.mean(list(overlap_results.values()))
         average_mae = np.mean(list(mae_results.values()))
         average_disc = np.mean(list(disc_results.values()))
+
+        writer.add_scalar("val/overlap", average_overlap, global_step)
+        writer.add_scalar("val/mae", average_mae, global_step)
+        writer.add_scalar("val/disc", average_disc, global_step)
 
         return {
             "overlap": average_overlap,

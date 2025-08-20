@@ -17,6 +17,8 @@ from typing import Any, Optional
 
 import datasets
 import optuna
+from optuna.storages import JournalStorage
+from optuna.storages.journal import JournalFileBackend
 import pandas as pd
 import torch
 from safetensors.torch import load_file
@@ -232,6 +234,7 @@ def tune(
     direction: str = "minimize",
     storage: Optional[optuna.storages.BaseStorage] = None,
     force_device: Optional[str] = None,
+    optuna_result_dir: str = "optuna_results"
 ) -> tuple[dict[str, Any], torch.nn.Module, dict[str, torch.Tensor]]:
     """Run hyperparameter tuning using Optuna.
 
@@ -261,61 +264,66 @@ def tune(
     """
     device = optuna_tune.resolve_device(force_device=force_device, config_device=model_config.device)
 
-    # Create temporary artifact store
-    with tempfile.TemporaryDirectory() as temp_dir:
-        artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=temp_dir)
+    os.makedirs(optuna_result_dir, exist_ok=True)
+    artifacts_dir = os.path.join(optuna_result_dir, "artifacts")
+    os.makedirs(artifacts_dir, exist_ok=True)
 
-        # Create objective function
-        objective = optuna_tune.Objective(
-            model_class=model_class,
-            network_params=model_config.network_params,
-            optimizer_params=model_config.optimizer_params,
-            data_params=model_config.data_params,
-            loss_params=model_config.loss_params,
-            train_torch_dataset=train_torch_dataset,
-            val_torch_dataset=val_torch_dataset,
-            artifact_store=artifact_store,
-            max_samples=max_samples,
-            compute_objective_every_n_samples=compute_objective_every_n_samples,
-            target_metric=target_metric,
-            device=device,
+    if storage is None:
+        storage = JournalStorage(JournalFileBackend(os.path.join(optuna_result_dir, "optuna_journal_storage.log")))
+
+    artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=artifacts_dir)
+
+    # Create objective function
+    objective = optuna_tune.Objective(
+        model_class=model_class,
+        network_params=model_config.network_params,
+        optimizer_params=model_config.optimizer_params,
+        data_params=model_config.data_params,
+        loss_params=model_config.loss_params,
+        train_torch_dataset=train_torch_dataset,
+        val_torch_dataset=val_torch_dataset,
+        artifact_store=artifact_store,
+        max_samples=max_samples,
+        compute_objective_every_n_samples=compute_objective_every_n_samples,
+        target_metric=target_metric,
+        device=device,
+    )
+
+    # Get pruner and sampler
+    pruner = model_config_parser.get_pruner(model_config.pruner)
+    sampler = model_config_parser.get_sampler(model_config.sampler)
+
+    # Run tuning
+    study = optuna_tune.tune_loop(
+        objective=objective,
+        pruner=pruner,
+        sampler=sampler,
+        n_trials=n_trials,
+        direction=direction,
+        storage=storage,
+    )
+
+    # Get best trial and create best model
+    best_trial = study.best_trial
+    best_config = best_trial.params
+
+    # Recreate best model
+    model_suggestions = model_config_parser.suggest_parameters(best_trial, model_config.network_params)
+    best_model = model_class(**model_suggestions)
+
+    # Load best weights if available
+    if "model_id" in best_trial.user_attrs:
+        model_path = artifact_store.download_artifact(
+            artifact_id=best_trial.user_attrs["model_id"],
+            dst_path=os.path.join(temp_dir, "best_model.safetensors"),
         )
+        weights = load_file(model_path)
+        best_model.load_state_dict(weights)
 
-        # Get pruner and sampler
-        pruner = model_config_parser.get_pruner(model_config.pruner)
-        sampler = model_config_parser.get_sampler(model_config.sampler)
+    # Get best metrics
+    best_metrics = {k: v for k, v in best_trial.user_attrs.items() if k.startswith(("train_", "val_"))}
 
-        # Run tuning
-        study = optuna_tune.tune_loop(
-            objective=objective,
-            pruner=pruner,
-            sampler=sampler,
-            n_trials=n_trials,
-            direction=direction,
-            storage=storage,
-        )
-
-        # Get best trial and create best model
-        best_trial = study.best_trial
-        best_config = best_trial.params
-
-        # Recreate best model
-        model_suggestions = model_config_parser.suggest_parameters(best_trial, model_config.network_params)
-        best_model = model_class(**model_suggestions)
-
-        # Load best weights if available
-        if "model_id" in best_trial.user_attrs:
-            model_path = artifact_store.download_artifact(
-                artifact_id=best_trial.user_attrs["model_id"],
-                dst_path=os.path.join(temp_dir, "best_model.safetensors"),
-            )
-            weights = load_file(model_path)
-            best_model.load_state_dict(weights)
-
-        # Get best metrics
-        best_metrics = {k: v for k, v in best_trial.user_attrs.items() if k.startswith(("train_", "val_"))}
-
-        return best_config, best_model, best_metrics
+    return best_config, best_model, best_metrics
 
 
 def compare_tensors(
