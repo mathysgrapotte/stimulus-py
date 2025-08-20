@@ -221,7 +221,8 @@ def transform(
 
 
 def tune(
-    dataset: datasets.DatasetDict,
+    train_torch_dataset: torch.utils.data.Dataset,
+    val_torch_dataset: torch.utils.data.Dataset,
     model_class: type[torch.nn.Module],
     model_config: model_schema.Model,
     n_trials: int = 100,
@@ -235,7 +236,8 @@ def tune(
     """Run hyperparameter tuning using Optuna.
 
     Args:
-        dataset: HuggingFace dataset containing train/test splits.
+        train_torch_dataset: PyTorch dataset for training.
+        val_torch_dataset: PyTorch dataset for validation.
         model_class: PyTorch model class to tune.
         model_config: Model configuration with tunable parameters.
         n_trials: Number of trials to run (default: 100).
@@ -258,11 +260,6 @@ def tune(
         ... )
     """
     device = optuna_tune.resolve_device(force_device=force_device, config_device=model_config.device)
-
-    # Convert HuggingFace dataset to torch datasets
-    dataset.set_format(type="torch")
-    train_torch_dataset = dataset["train"]
-    val_torch_dataset = dataset["test"]  # Using test as validation
 
     # Create temporary artifact store
     with tempfile.TemporaryDirectory() as temp_dir:
