@@ -378,6 +378,8 @@ class Objective:
 
         metric_dict = model_instance.validate(data_loader)
 
+        logger.info(f"Validation metrics at step {global_step}: {metric_dict}")
+
         for key in metric_dict:
             writer.add_scalar(f"val/{key}", metric_dict[key], global_step)
 
