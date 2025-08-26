@@ -363,9 +363,11 @@ class Objective:
         val_metrics = self.get_metrics(model_instance, val_loader, writer=writer, global_step=global_step)
 
         # add val_ prefix to related keys.
-        return {
+        metric_dict = {{
             **{f"val_{k}": v for k, v in val_metrics.items()},
-        }
+        }}
+        logger.info(f"Output metrics at step {global_step}: {metric_dict}")
+        return metric_dict
 
     def get_metrics(
         self,
