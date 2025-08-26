@@ -315,7 +315,7 @@ def tune(
     if "model_id" in best_trial.user_attrs:
         model_path = artifact_store.download_artifact(
             artifact_id=best_trial.user_attrs["model_id"],
-            dst_path=os.path.join(temp_dir, "best_model.safetensors"),
+            dst_path=os.path.join(optuna_result_dir, "best_model.safetensors"),
         )
         weights = load_file(model_path)
         best_model.load_state_dict(weights)

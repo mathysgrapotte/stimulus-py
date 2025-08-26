@@ -351,8 +351,8 @@ class Objective:
     def objective(
         self,
         model_instance: torch.nn.Module,
-        train_loader: torch.utils.data.DataLoader,
         val_loader: torch.utils.data.DataLoader,
+        train_loader: torch.utils.data.DataLoader,
         writer: SummaryWriter,
         global_step: int,
     ) -> dict[str, float]:
@@ -362,7 +362,7 @@ class Objective:
         """
         val_metrics = self.get_metrics(model_instance, val_loader, writer=writer, global_step=global_step)
 
-        # add train_ and val_ prefix to related keys.
+        # add val_ prefix to related keys.
         return {
             **{f"val_{k}": v for k, v in val_metrics.items()},
         }
@@ -376,86 +376,12 @@ class Objective:
     ) -> dict[str, float]:
         """Compute the objective metric(s) for the tuning process."""
 
-        predictions = []
-        targets = []
+        metric_dict = model_instance.validate(data_loader)
 
-        val_batch_idx = 0
-        for batch in data_loader:
-            logger.info(f"Processing validation batch {val_batch_idx} out of {len(data_loader)}")
-            # Move all tensors to device (sample_id is now an integer tensor)
-            logger.info(f"Moving batch to device: {self.device}")
-            device_batch = self._move_batch_to_device(batch)
-            # Perform a batch update
-            prediction, target, _loss, _metrics = model_instance.inference(batch=device_batch)
-            logger.info(f"Batch {val_batch_idx} inference complete")
-            predictions.append(prediction)
-            targets.append(target)
-            logger.info(f"Batch {val_batch_idx} processed, predictions and targets collected")
-            val_batch_idx += 1
+        for key in metric_dict:
+            writer.add_scalar(f"val/{key}", metric_dict[key], global_step)
 
-        logger.info("All batches processed, aggregating predictions and targets")
-        predictions = torch.vstack(predictions).detach().cpu().numpy()
-        true = torch.vstack(targets).detach().cpu().numpy()
-
-        true_with_control = np.concatenate([data_loader.dataset.control_cells, true], axis=0)  
-        pred_with_control = np.concatenate([data_loader.dataset.control_cells, predictions], axis=0)
-
-        n_controls = data_loader.dataset.control_cells.shape[0]  
-        n_perts = true.shape[0]  
-
-
-        pert_labels = (["control"] * n_controls +
-                    [target for target in data_loader.dataset.target_names])
-
-        logger.info(f"Creating AnnData objects for real and predicted data with {n_controls} controls and {n_perts} perturbations")
-
-        real_adata = ad.AnnData(X=true_with_control, obs={"perturbation": pert_labels})
-        real_adata.var.index = data_loader.dataset.gene_names
-        pred_adata = ad.AnnData(X=pred_with_control, obs={"perturbation": pert_labels})
-        pred_adata.var.index = data_loader.dataset.gene_names
-
-        logger.info("Calculating metrics: MAE, Discrimination Score, Differential Expression Overlap")
-        data_pair = PerturbationAnndataPair(real=real_adata, pred=pred_adata, pert_col="perturbation", control_pert="control")
-        mae_results = mae(data_pair)
-        disc_results = discrimination_score(data_pair, metric="l1", exclude_target_gene=True)
-
-        real_de = parallel_differential_expression(
-            adata=data_pair.real,
-            reference="control",
-            groupby_key="perturbation",
-            num_workers=1,
-            batch_size=100,
-            metric="wilcoxon",
-            as_polars=True
-        )
-
-        pred_de = parallel_differential_expression(
-            adata=data_pair.pred,
-            reference="control",
-            groupby_key="perturbation",
-            num_workers=1,
-            batch_size=100,
-            metric="wilcoxon",
-            as_polars=True
-        )
-
-        de_comparison = initialize_de_comparison(real_de, pred_de)
-        overlap_results = de_overlap_metric(de_comparison, k=None, metric="overlap", fdr_threshold=0.05)
-
-        # Calculate averages from the result dictionaries
-        average_overlap = np.mean(list(overlap_results.values()))
-        average_mae = np.mean(list(mae_results.values()))
-        average_disc = np.mean(list(disc_results.values()))
-
-        writer.add_scalar("val/overlap", average_overlap, global_step)
-        writer.add_scalar("val/mae", average_mae, global_step)
-        writer.add_scalar("val/disc", average_disc, global_step)
-
-        return {
-            "overlap": average_overlap,
-            "mae": average_mae,
-            "disc": average_disc
-        }
+        return metric_dict
 
 
 def resolve_device(force_device: Optional[str] = None, config_device: Optional[str] = None) -> torch.device:
