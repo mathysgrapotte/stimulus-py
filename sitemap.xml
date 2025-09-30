@@ -165,6 +165,10 @@
          <lastmod>2025-09-30</lastmod>
     </url>
     <url>
+         <loc>https://mathysgrapotte.github.io/stimulus-py/reference/stimulus/learner/device_utils/</loc>
+         <lastmod>2025-09-30</lastmod>
+    </url>
+    <url>
          <loc>https://mathysgrapotte.github.io/stimulus-py/reference/stimulus/learner/optuna_tune/</loc>
          <lastmod>2025-09-30</lastmod>
     </url>
@@ -186,6 +190,10 @@
     </url>
     <url>
          <loc>https://mathysgrapotte.github.io/stimulus-py/reference/stimulus/typing/</loc>
+         <lastmod>2025-09-30</lastmod>
+    </url>
+    <url>
+         <loc>https://mathysgrapotte.github.io/stimulus-py/reference/stimulus/typing/protocols/</loc>
          <lastmod>2025-09-30</lastmod>
     </url>
     <url>
