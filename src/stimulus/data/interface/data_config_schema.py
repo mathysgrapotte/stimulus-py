@@ -156,3 +156,10 @@ class IndividualTransformConfigDict(BaseModel):
 
     global_params: GlobalParams
     transforms: Transform
+
+
+class DatasetConfig(BaseModel):
+    """Dataset configuration."""
+
+    type: str = "HuggingFaceDataset"
+    params: dict[str, Any] = {}

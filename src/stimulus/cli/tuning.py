@@ -5,7 +5,6 @@ import logging
 import os
 from typing import Any, Optional
 
-import datasets
 import optuna
 import optuna.storages.journal
 import yaml
@@ -39,19 +38,22 @@ def tune(
         best_optimizer_path: Path to write the best optimizer to.
         force_device: Force the device to use.
     """
-    # Load train and validation datasets
-    dataset_dict = datasets.load_from_disk(data_path)
-    dataset_dict.set_format("torch")
-    train_dataset = dataset_dict["train"]
-    validation_dataset = dataset_dict["test"]
-
-    # Load model class
-    model_class = model_file_interface.import_class_from_file(model_path)
-
     # Load model config
     with open(model_config_path) as file:
         model_config_dict: dict[str, Any] = yaml.safe_load(file)
     model_config: model_schema.Model = model_schema.Model(**model_config_dict)
+
+    # Load model class
+    model_class = model_file_interface.import_class_from_file(model_path)
+
+    # Load train and validation datasets
+    from stimulus.data.interface import dataset_interface
+
+    dataset_class = getattr(dataset_interface, model_config.dataset.type)
+    dataset_dict = dataset_class.load_from_disk(data_path, **model_config.dataset.params)
+
+    train_dataset = dataset_dict.get_torch_dataset("train")
+    validation_dataset = dataset_dict.get_torch_dataset("test")
 
     # get the pruner
     pruner = model_config_parser.get_pruner(model_config.pruner)

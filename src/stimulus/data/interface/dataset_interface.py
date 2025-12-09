@@ -134,11 +134,15 @@ class StimulusDataset(ABC):
 
     @classmethod
     @abstractmethod
-    def load_from_disk(cls, path: str) -> "StimulusDataset":
+    def load_from_disk(cls, path: str, **kwargs: Any) -> "StimulusDataset":
         """Load a dataset from disk.
 
         Args:
             path (str): The path to the dataset.
+            **kwargs: Additional arguments passed to the underlying dataset loader.
+                      Common arguments include:
+                      - keep_in_memory (bool): Whether to copy the dataset to memory.
+                      - storage_options (dict): Options for the storage backend (e.g. S3).
 
         Returns:
             StimulusDataset: The loaded dataset.
@@ -281,11 +285,15 @@ class HuggingFaceDataset(StimulusDataset):
         return self._dataset
 
     @classmethod
-    def load_from_disk(cls, path: str) -> "HuggingFaceDataset":
+    def load_from_disk(cls, path: str, **kwargs: Any) -> "HuggingFaceDataset":
         """Load a dataset from disk with strict format checking.
 
         Args:
             path: Path to the dataset file (CSV/Parquet) or directory.
+            **kwargs: Additional arguments passed to the underlying dataset loader.
+                      Common arguments include:
+                      - keep_in_memory (bool): Whether to copy the dataset to memory.
+                      - storage_options (dict): Options for the storage backend (e.g. S3).
 
         Returns:
             HuggingFaceDataset: The loaded dataset.
@@ -302,10 +310,10 @@ class HuggingFaceDataset(StimulusDataset):
 
         if os.path.isdir(path):
             logger.info(f"Loading dataset from directory: {path}")
-            dataset = datasets.load_from_disk(path)
+            dataset = datasets.load_from_disk(path, **kwargs)
         elif path.endswith(".parquet"):
             logger.info(f"Loading as parquet: {path}")
-            dataset = datasets.load_dataset("parquet", data_files=path)
+            dataset = datasets.load_dataset("parquet", data_files=path, **kwargs)
         else:
             raise ValueError(
                 f"Unsupported file format or missing extension for path: {path}. Expected .parquet or a directory.",

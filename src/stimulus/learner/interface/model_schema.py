@@ -8,6 +8,8 @@ import optuna
 import pydantic
 import torch
 
+from stimulus.data.interface import data_config_schema
+
 logger = logging.getLogger(__name__)
 
 
@@ -163,6 +165,7 @@ class Model(pydantic.BaseModel):
     optimizer_params: dict[str, TunableParameter]
     loss_params: dict[str, TunableParameter]
     data_params: dict[str, TunableParameter]
+    dataset: data_config_schema.DatasetConfig = pydantic.Field(default_factory=data_config_schema.DatasetConfig)
     pruner: Pruner
     sampler: Sampler
     objective: Objective
