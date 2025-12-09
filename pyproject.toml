@@ -35,7 +35,6 @@ dependencies = [
     "multiprocess==0.70.16",
     "numpy>=2.0.0",
     "pandas>=2.2.0",
-
     "pydantic>=2.7.0",
     "safetensors>=0.4.5",
     "scikit-learn>=1.5.0",
@@ -54,6 +53,7 @@ dependencies = [
     "hatchling>=1.27.0",
     "tensorboard>=2.20.0",
     "typing-extensions>=4.0.0",
+    "anndata>=0.11.4",
 ]
 
 [project.scripts]
