@@ -384,15 +384,12 @@ class H5adDataset(StimulusDataset):
     @property
     def column_names(self) -> dict[str, list[str]]:
         """Get column names for each split."""
-        cols = ["X"] + list(self._adata.obs.columns)
-        return {split: cols for split in self.split_names}
+        cols = ["X", *list(self._adata.obs.columns)]
+        return dict.fromkeys(self.split_names, cols)
 
     def get_column(self, split: str, column_name: str) -> Union[list[Any], np.ndarray]:
         """Get a column from a specific split."""
-        if self._split_col:
-            subset = self._adata[self._adata.obs[self._split_col] == split]
-        else:
-            subset = self._adata
+        subset = self._adata[self._adata.obs[self._split_col] == split] if self._split_col else self._adata
 
         if column_name == "X":
             return subset.X
@@ -406,27 +403,24 @@ class H5adDataset(StimulusDataset):
             if self._split_col:
                 mask = self._adata.obs[self._split_col].isin(split)
                 subset = self._adata[mask]
+            # If no split col, and we ask for multiple splits, it's ambiguous unless it's just ['train']
+            elif split == ["train"]:
+                subset = self._adata
             else:
-                # If no split col, and we ask for multiple splits, it's ambiguous unless it's just ['train']
-                if split == ["train"]:
-                    subset = self._adata
-                else:
-                    raise ValueError("Cannot select multiple splits without a split column.")
+                raise ValueError("Cannot select multiple splits without a split column.")
+        elif self._split_col:
+            subset = self._adata[self._adata.obs[self._split_col] == split]
+        elif split == "train":
+            subset = self._adata
         else:
-            if self._split_col:
-                subset = self._adata[self._adata.obs[self._split_col] == split]
-            else:
-                if split == "train":
-                    subset = self._adata
-                else:
-                    raise ValueError(f"Split {split} not found.")
+            raise ValueError(f"Split {split} not found.")
 
         # By default, include all columns + X
         # In practice, users might want to select specific columns.
         # The StimulusDataset interface doesn't strictly define how to select columns for the torch dataset
         # other than what the model expects.
         # For now, let's include X and all obs columns.
-        cols = ["X"] + list(subset.obs.columns)
+        cols = ["X", *list(subset.obs.columns)]
         return AnnDataTorchDataset(subset, cols)
 
     def map(
@@ -450,7 +444,7 @@ class H5adDataset(StimulusDataset):
         # If the transformation expects an AnnData object, we can pass it.
         scope = getattr(transformation, "scope", "element")
         if scope == "dataset":
-             # Assume transformation takes AnnData and returns AnnData
+            # Assume transformation takes AnnData and returns AnnData
             new_adata = transformation(self._adata)
             return H5adDataset(new_adata, self._split_col)
         raise NotImplementedError("Element-wise apply is not yet supported for H5adDataset.")
@@ -478,11 +472,8 @@ class H5adDataset(StimulusDataset):
         """Select a subset of a split."""
         # This is used for splitting logic.
         # We need to return a subset of the data.
-        if self._split_col:
-            subset = self._adata[self._adata.obs[self._split_col] == split]
-        else:
-            subset = self._adata
-        
+        subset = self._adata[self._adata.obs[self._split_col] == split] if self._split_col else self._adata
+
         return subset[indices]
 
     def create_from_splits(self, splits: dict[str, Any]) -> "StimulusDataset":
@@ -492,20 +483,20 @@ class H5adDataset(StimulusDataset):
         # splits is a dict of {split_name: AnnData_subset}
         # We need to concatenate them and create a new AnnData object
         # and potentially add a split column.
-        
+
         adatas = []
         for split_name, adata in splits.items():
             # Add split column
             if self._split_col:
                 # If split col exists, update it
                 # But adata is a view or copy, so be careful
-                adata = adata.copy()
-                adata.obs[self._split_col] = split_name
+                adata_copy = adata.copy()
+                adata_copy.obs[self._split_col] = split_name
+                adatas.append(adata_copy)
             else:
                 # If no split col, we might need to create one if we are combining multiple splits
                 # For now, let's assume we just concat.
-                pass
-            adatas.append(adata)
-            
+                adatas.append(adata)
+
         new_adata = anndata.concat(adatas, join="outer")
         return H5adDataset(new_adata, self._split_col)
