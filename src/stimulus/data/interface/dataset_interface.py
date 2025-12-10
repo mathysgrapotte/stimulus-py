@@ -523,21 +523,80 @@ class H5adDataset(StimulusDataset):
     def save(self, path: str) -> None:
         """Save the dataset to disk.
 
-        Enforces .h5ad extension for compatibility with CLI detection.
+        If the dataset has splits, saves each split as a separate .h5ad file
+        in subdirectories (e.g., path/train/data.h5ad, path/test/data.h5ad).
+        Otherwise, saves to a single .h5ad file.
         """
-        if not path.endswith(".h5ad"):
-            path += ".h5ad"
-        self._adata.write_h5ad(path)
+        import os
+
+        if self._split_col and self._split_col in self._adata.obs:
+            # Save each split to separate files in subdirectories
+            os.makedirs(path, exist_ok=True)
+            
+            for split_name in self.split_names:
+                split_dir = os.path.join(path, split_name)
+                os.makedirs(split_dir, exist_ok=True)
+                
+                # Get subset for this split
+                split_mask = self._adata.obs[self._split_col] == split_name
+                split_adata = self._adata[split_mask].copy()
+                
+                # Remove the split column from the subset (no longer needed)
+                split_adata.obs = split_adata.obs.drop(columns=[self._split_col])
+                
+                # Save to split subdirectory
+                split_path = os.path.join(split_dir, "data.h5ad")
+                split_adata.write_h5ad(split_path)
+        else:
+            # Single file save (no splits)
+            if not path.endswith(".h5ad"):
+                path += ".h5ad"
+            self._adata.write_h5ad(path)
 
     @classmethod
     def load_from_disk(cls, path: str, **kwargs: Any) -> "H5adDataset":
-        """Load a dataset from disk."""
+        """Load a dataset from disk.
+
+        If path is a directory containing subdirectories (train, test, etc.),
+        loads each split from separate .h5ad files and combines them.
+        Otherwise, loads from a single .h5ad file.
+        """
+        import os
+
         import anndata
 
-        # Check for split column in kwargs or default
-        split_col = kwargs.pop("split_col", None)
-        adata = anndata.read_h5ad(path, **kwargs)
-        return cls(adata, split_col=split_col)
+        if os.path.isdir(path):
+            # Check if directory contains split subdirectories
+            potential_splits = ["train", "test", "validation", "val"]
+            found_splits = {}
+            
+            for split_name in os.listdir(path):
+                split_path = os.path.join(path, split_name)
+                if os.path.isdir(split_path):
+                    # Look for data.h5ad in the subdirectory
+                    h5ad_file = os.path.join(split_path, "data.h5ad")
+                    if os.path.exists(h5ad_file):
+                        found_splits[split_name] = h5ad_file
+            
+            if found_splits:
+                # Load and combine splits
+                adatas = []
+                for split_name, split_file in sorted(found_splits.items()):
+                    split_adata = anndata.read_h5ad(split_file, **kwargs)
+                    split_adata.obs["split"] = split_name
+                    adatas.append(split_adata)
+                
+                combined_adata = anndata.concat(adatas, join="outer")
+                return cls(combined_adata, split_col="split")
+            else:
+                raise ValueError(
+                    f"Directory {path} does not contain split subdirectories with .h5ad files"
+                )
+        else:
+            # Single file load
+            split_col = kwargs.pop("split_col", None)
+            adata = anndata.read_h5ad(path, **kwargs)
+            return cls(adata, split_col=split_col)
 
     def select_split(self, split: str, indices: Any) -> Any:
         """Select a subset of a split."""
