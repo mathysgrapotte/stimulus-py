@@ -2,6 +2,7 @@
 """CLI module for transforming data files."""
 
 import logging
+from typing import Any
 
 import pandas as pd
 
@@ -31,15 +32,43 @@ def transform(
     transforms = transform_pipeline.load_transforms_from_config(config_yaml)
     logger.info("Transforms initialized successfully.")
 
-    # Apply the transformations to the data
-    dataset = dataset.map(
-        transform_pipeline.transform_batch,
-        batched=True,
-        fn_kwargs={"transforms_config": transforms},
-    )
+    # Separate dataset-level transforms from element/batch-level transforms
+    dataset_transforms = []
+    element_transforms: dict[str, list[Any]] = {}
+
+    for col, transform_list in transforms.items():
+        element_transforms[col] = []
+        for t in transform_list:
+            if getattr(t, "scope", "element") == "dataset":
+                dataset_transforms.append(t)
+            else:
+                element_transforms[col].append(t)
+
+    # Apply dataset-level transforms first
+    for t in dataset_transforms:
+        logger.info(f"Applying dataset transform: {t}")
+        dataset = dataset.apply(t)
+
+    # Apply element/batch-level transformations to the data
+    # Only map if there are element transforms
+    if any(element_transforms.values()):
+        dataset = dataset.map(
+            transform_pipeline.transform_batch,
+            batched=True,
+            fn_kwargs={"transforms_config": element_transforms},
+        )
+
     logger.debug(f"Dataset type: {type(dataset)}")
 
     # Filter out NaN values
-    dataset = dataset.filter(lambda example: not any(pd.isna(value) for value in example.values()))
+    # Some datasets (like H5adDataset) might not support row-wise filtering seamlessly yet.
+    # If they are used with global transforms, they manage their own consistency.
+    try:
+        dataset = dataset.filter(lambda example: not any(pd.isna(value) for value in example.values()))
+    except NotImplementedError:
+        logger.warning(
+            f"Filtering not supported for dataset type {type(dataset).__name__}. "
+            "Skipping NaN filtering. Ensure your global transforms handle data consistency.",
+        )
 
     dataset.save(out_path)

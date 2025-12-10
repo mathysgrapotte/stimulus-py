@@ -1,9 +1,14 @@
 """This file contains noise generators classes for generating various types of noise."""
 
+from __future__ import annotations
+
 import copy
 import multiprocessing as mp
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    import anndata
 
 import numpy as np
 
@@ -35,6 +40,17 @@ class AbstractTransform(ABC):
         self.remove_row: bool = False
         self.seed: int = 42
         self.scope: str = "element"  # "element" or "dataset"
+
+    def __call__(self, data: Any) -> Any:
+        """Allow the transformer to be called directly.
+
+        Args:
+            data (Any): the data to be transformed
+
+        Returns:
+            transformed_data (Any): the transformed data
+        """
+        return self.transform(data)
 
     @abstractmethod
     def transform(self, data: Any) -> Any:
@@ -428,6 +444,74 @@ class SwapTransform(AbstractTransform):
         for _ in range(self.swap_numbers):
             data_clone = self.transform(data_clone)
         return data_clone
+
+
+class ScanpyTransform(AbstractTransform):
+    """Apply a scanpy transformation to a whole h5ad dataset."""
+
+    def __init__(self, func: str, seed: int = 42, **kwargs: Any) -> None:
+        """Initialize the ScanpyTransform.
+
+        Args:
+            func: The scanpy function name to apply (e.g., "pp.highly_variable_genes").
+            seed: Random seed for reproducibility.
+            **kwargs: Additional keyword arguments to pass to the scanpy function.
+        """
+        super().__init__()
+        self.func = func
+        self.seed = seed
+        self.kwargs = kwargs
+        self.scope = "dataset"
+
+    def _get_bg_func(self, func_name: str) -> Callable:
+        """Get the scanpy function from the function name string."""
+        import scanpy as sc
+
+        parts = func_name.split(".")
+        func = sc
+        for part in parts:
+            func = getattr(func, part)
+        return func
+
+    def transform(self, data: anndata.AnnData) -> anndata.AnnData:
+        """Apply the scanpy function to the data.
+
+        Args:
+            data (anndata.AnnData): the data to be transformed
+
+        Returns:
+            transformed_data (anndata.AnnData): the transformed data
+        """
+        np.random.seed(self.seed)
+        func = self._get_bg_func(self.func)
+
+        # Some scanpy functions modify in-place and return None, others return the object.
+        # We need to handle both cases if we want to return the transformed data.
+        # However, AnnData is mutable, so in-place modifications are reflected in 'data'.
+        # For safety/consistency with the transform API which implies returning the new state:
+
+        func(data, **self.kwargs)
+
+        # If result is None, it means the operation was in-place on 'data'.
+        # If result is not None, it might be a view or a new object or something else (e.g. pca returns None but adds to obsm)
+        # Scanpy conventions: pp usually updates adata.
+
+        return data
+
+    def transform_all(self, data: list[anndata.AnnData]) -> list[anndata.AnnData]:
+        """Apply the scanpy function to multiple datasets using multiprocessing.
+
+        Args:
+            data (list): the data to be transformed
+
+        Returns:
+            transformed_data (list): the transformed data points
+        """
+        # Multiprocessing with scanpy/anndata can be tricky due to file locks or memory.
+        # But keeping the existing pattern:
+        with mp.Pool(mp.cpu_count()) as pool:
+            function_specific_input = list(data)
+            return pool.map(self.transform, function_specific_input)
 
 
 class RandomDownSampler:

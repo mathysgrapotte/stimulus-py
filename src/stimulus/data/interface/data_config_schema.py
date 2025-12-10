@@ -37,7 +37,7 @@ class TransformColumnsTransformation(BaseModel):
     """Model for column transformation configuration."""
 
     name: str
-    params: Optional[dict[str, Union[list[Any], float]]]  # Allow both list and float values
+    params: Optional[dict[str, Union[list[Any], float, str, int, bool]]]  # Allow list, numeric, and string values
 
 
 class TransformColumns(BaseModel):
