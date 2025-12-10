@@ -1,0 +1,7 @@
+global_params:
+  seed: 42
+split:
+  split_method: "TargetGeneSplitter"
+  params:
+    split_ratio: [0.8, 0.2]
+  split_input_columns: ["target_gene"]

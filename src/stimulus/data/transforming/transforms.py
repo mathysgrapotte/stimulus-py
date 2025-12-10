@@ -498,8 +498,6 @@ class ScanpyTransform(AbstractTransform):
 
         return data
 
-
-
     def transform_all(self, data: list[anndata.AnnData]) -> list[anndata.AnnData]:
         """Apply the scanpy function to multiple datasets using multiprocessing.
 
@@ -561,3 +559,133 @@ class RandomDownSampler:
 
         # return sampled data with np.nan for removed items
         return [data[i] if i in kept_indices else np.nan for i in range(len(data))]
+
+
+class AveragePca(AbstractTransform):
+    """A PCA implementation that computes averages per condition before fitting."""
+
+    def __init__(
+        self,
+        n_components: int,
+        field: str,
+        store_field: str,
+        remove_target_field: str = "non-targeting",
+        remove_target_values: list | None = None,
+        seed: int = 42,
+    ) -> None:
+        """Initialize the AveragePca class.
+
+        Args:
+            n_components: Number of principal components to compute.
+            field: Column in input_data.obs to group by for averaging.
+            store_field: Key in input_data.obsm to store the transformed data.
+            remove_target_field: Field to check for values to remove.
+            remove_target_values: Values to remove before fitting.
+            seed: Random seed.
+        """
+        super().__init__()
+        self.n_components = n_components
+        self.field = field
+        self.store_field = store_field
+        self.remove_target_field = remove_target_field
+        self.remove_target_values = remove_target_values
+        self.seed = seed
+        self.scope = "dataset"
+        self.loadings = None
+        self.pca_mean = None
+
+    def transform(self, input_data: anndata.AnnData) -> anndata.AnnData:
+        """Fit the PCA model on condition-averaged data and transform the input.
+
+        Args:
+            input_data: Input AnnData object containing the data.
+
+        Returns:
+            The input AnnData object with PCA results stored in obsm[store_field].
+        """
+        import anndata as ad
+        import scanpy as sc
+
+        if self.n_components > input_data.X.shape[1]:
+            raise ValueError(
+                f"n_components {self.n_components} is greater than number of features {input_data.X.shape[1]}.",
+            )
+        if self.n_components > input_data.n_obs:
+            raise ValueError(
+                f"n_components {self.n_components} is greater than number of samples {input_data.n_obs}.",
+            )
+        if self.n_components <= 0:
+            raise ValueError("n_components must be greater than 0.")
+        if self.field not in input_data.obs.columns:
+            raise ValueError(
+                f"Field {self.field} not found in input_data.obs, available fields: {input_data.obs.columns.tolist()}",
+            )
+        if self.store_field in input_data.obsm:
+            raise ValueError(f"Field {self.store_field} already exists in input_data.obsm.")
+
+        np.random.seed(self.seed)
+
+        # Create a copy or view for fitting to avoid modifying original until we are ready
+        # But for 'pca_data' filtering, we make a copy of the subset.
+        if self.remove_target_values is not None and self.remove_target_field in input_data.obs:
+            mask = ~input_data.obs[self.remove_target_field].isin(self.remove_target_values)
+            pca_data = input_data[mask].copy()
+            # We can log here if we had a logger, but print is maybe too noisy?
+            # kept clean for now.
+        else:
+            pca_data = input_data.copy()
+
+        condition_averages = []
+        conditions = pca_data.obs[self.field].unique()
+
+        for condition in conditions:
+            condition_mask = pca_data.obs[self.field] == condition
+            condition_data = pca_data[condition_mask].X
+            condition_avg = np.mean(condition_data, axis=0)
+            condition_avg = np.asarray(condition_avg).flatten()
+            condition_averages.append(condition_avg)
+
+        # Create AnnData object with condition averages
+        adata_avg = ad.AnnData(X=np.vstack(condition_averages))
+        adata_avg.obs["condition"] = conditions
+        adata_avg.var = input_data.var.copy()
+
+        # Compute PCA on condition averages
+        # Note: sc.pp.pca modifies adata_avg in place
+        sc.pp.pca(adata_avg, n_comps=self.n_components)
+
+        self.loadings = adata_avg.varm["PCs"]
+        self.pca_mean = np.mean(adata_avg.X, axis=0)
+
+        # Now apply to the original input_data
+        # (X - mean) @ loadings
+        # Ensure array format
+        x = input_data.X
+        if hasattr(x, "toarray"):
+            x = x.toarray()
+
+        input_data.obsm[self.store_field] = (x - self.pca_mean) @ self.loadings
+        input_data.varm["PCs"] = self.loadings
+
+        if "pca" not in input_data.uns:
+            input_data.uns["pca"] = {}
+        input_data.uns["pca"]["mean"] = self.pca_mean
+
+        return input_data
+
+    def transform_all(self, data: list[anndata.AnnData]) -> list[anndata.AnnData]:
+        """Apply transform to multiple datasets.
+
+        For AveragePca, typically it is trained on one dataset and applied to others,
+        or trained on each independently.
+        Given the architecture here, if we pass a list, we probably want to apply independent transforms
+        (fitting on each).
+
+        Args:
+            data: List of AnnData objects.
+
+        Returns:
+            List of transformed AnnData objects.
+        """
+        # Sequential processing for now to avoid multiprocess complexity with AnnData
+        return [self.transform(d) for d in data]

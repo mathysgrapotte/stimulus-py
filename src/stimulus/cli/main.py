@@ -17,7 +17,14 @@ from stimulus.cli.split import split as split_func
 from stimulus.cli.split_yaml import split_yaml as split_yaml_func
 from stimulus.cli.transform import transform as transform_func
 from stimulus.cli.tuning import tune as tune_func
-from stimulus.data.interface.dataset_interface import HuggingFaceDataset
+from stimulus.data.interface.dataset_interface import H5adDataset, HuggingFaceDataset, StimulusDataset
+
+
+def _get_dataset_cls(data_path: str) -> type[StimulusDataset]:
+    """Get the appropriate dataset class based on file extension."""
+    if data_path.endswith(".h5ad"):
+        return H5adDataset
+    return HuggingFaceDataset
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -75,7 +82,7 @@ def check_model(
         model_config_path=model_config,
         optuna_results_dirpath=optuna_results_dirpath,
         force_device=force_device,
-        dataset_cls=HuggingFaceDataset,
+        dataset_cls=_get_dataset_cls(data),
     )
 
 
@@ -111,7 +118,7 @@ def split(
         data_path=data,
         config_yaml=yaml,
         out_path=output,
-        dataset_cls=HuggingFaceDataset,
+        dataset_cls=_get_dataset_cls(data),
     )
 
 
@@ -177,7 +184,7 @@ def transform(
         data_path=data,
         config_yaml=yaml,
         out_path=output,
-        dataset_cls=HuggingFaceDataset,
+        dataset_cls=_get_dataset_cls(data),
     )
 
 
@@ -222,7 +229,7 @@ def encode(
         config_yaml=yaml,
         out_path=output,
         num_proc=num_proc,
-        dataset_cls=HuggingFaceDataset,
+        dataset_cls=_get_dataset_cls(data),
     )
 
 
@@ -355,7 +362,7 @@ def predict(
         weight_path=model_weight,
         output=output,
         batch_size=batch_size,
-        dataset_cls=HuggingFaceDataset,
+        dataset_cls=_get_dataset_cls(data),
     )
 
 

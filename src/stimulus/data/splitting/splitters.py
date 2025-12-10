@@ -1,12 +1,13 @@
 """This file contains the splitter classes for splitting data accordingly."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 
 # Constants
 SPLIT_SIZE = 2  # Number of splits (train/test)
+TOLERANCE = 1e-6  # Tolerance for floating point comparisons
 
 
 class AbstractSplitter(ABC):
@@ -131,6 +132,7 @@ class RandomSplit(AbstractSplitter):
         """
         raise NotImplementedError
 
+
 class TargetGeneSplitter(AbstractSplitter):
     """Split the data into train and test sets based on target genes."""
 
@@ -183,12 +185,14 @@ class TargetGeneSplitter(AbstractSplitter):
         else:
             # Case 2: Random ratio of genes
             # Determine test ratio
+            if self.split_ratio is None:
+                raise ValueError("split_ratio must be provided when target_genes is None.")
             if isinstance(self.split_ratio, list):
-                if len(self.split_ratio) != 2:
+                if len(self.split_ratio) != SPLIT_SIZE:
                     raise ValueError("split_ratio list must have length 2 [train, test].")
-                if abs(sum(self.split_ratio) - 1.0) > 1e-6:
+                if abs(sum(self.split_ratio) - 1.0) > TOLERANCE:
                     raise ValueError(f"split_ratio must sum to 1. Got {sum(self.split_ratio)}")
-                test_ratio = self.split_ratio[1]
+                test_ratio = cast("list[float]", self.split_ratio)[1]
             else:
                 test_ratio = self.split_ratio
 
@@ -197,7 +201,7 @@ class TargetGeneSplitter(AbstractSplitter):
             # Ensure at least one gene if ratio > 0 and genes exist
             if n_test_genes == 0 and test_ratio > 0 and len(unique_genes) > 0:
                 n_test_genes = 1
-            
+
             shuffled_genes = unique_genes.copy()
             np.random.shuffle(shuffled_genes)
             test_genes_set = set(shuffled_genes[:n_test_genes])
@@ -205,11 +209,11 @@ class TargetGeneSplitter(AbstractSplitter):
         # Create masks
         # Using numpy for efficiency if genes is numpy array, else list comp
         # genes is already converted to numpy array above
-        
+
         # We need to return indices
         # np.isin returns boolean mask
         is_test = np.isin(genes, list(test_genes_set))
-        
+
         # Get indices
         all_indices = np.arange(len(genes))
         test_indices = all_indices[is_test].tolist()

@@ -1,0 +1,15 @@
+global_params:
+  seed: 42
+transforms:
+  transformation_name: "log_and_hvg_2000"
+  columns:
+    - column_name: "X"
+      transformations:
+        - name: "ScanpyTransform"
+          params:
+            func: "pp.log1p"
+        - name: "ScanpyTransform"
+          params:
+            func: "pp.highly_variable_genes"
+            n_top_genes: 2000
+            subset: True

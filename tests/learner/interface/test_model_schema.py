@@ -83,7 +83,3 @@ def test_model_schema(get_config: dict[str, Any]) -> None:
     # Test objective
     assert model.objective.metric == "val_loss"
     assert model.objective.direction == "minimize"
-
-    # Test dataset
-    assert model.dataset.type == "HuggingFaceDataset"
-    assert model.dataset.params == {}

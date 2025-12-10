@@ -350,6 +350,10 @@ class AnnDataTorchDataset(torch.utils.data.Dataset):
                     self.data[col] = torch.tensor(val)
                 else:
                     self.data[col] = val
+            elif col in adata.obsm:
+                # Support for obsm keys (e.g. embeddings)
+                val = adata.obsm[col]
+                self.data[col] = torch.tensor(val, dtype=torch.float32)
             else:
                 raise ValueError(f"Column {col} not found in AnnData object.")
 
@@ -420,7 +424,8 @@ class H5adDataset(StimulusDataset):
         # The StimulusDataset interface doesn't strictly define how to select columns for the torch dataset
         # other than what the model expects.
         # For now, let's include X and all obs columns.
-        cols = ["X", *list(subset.obs.columns)]
+        # Include X, all obs columns, and all obsm keys (e.g. PCA, embeddings)
+        cols = ["X", *list(subset.obs.columns), *list(subset.obsm.keys())]
         return AnnDataTorchDataset(subset, cols)
 
     def map(
