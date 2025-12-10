@@ -521,7 +521,12 @@ class H5adDataset(StimulusDataset):
         raise NotImplementedError("filter operation is not yet supported for H5adDataset.")
 
     def save(self, path: str) -> None:
-        """Save the dataset to disk."""
+        """Save the dataset to disk.
+
+        Enforces .h5ad extension for compatibility with CLI detection.
+        """
+        if not path.endswith(".h5ad"):
+            path += ".h5ad"
         self._adata.write_h5ad(path)
 
     @classmethod
