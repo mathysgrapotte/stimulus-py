@@ -65,7 +65,9 @@ class StimulusDataset(ABC):
         """
 
     @abstractmethod
-    def get_torch_dataset(self, split: Union[str, list[str]]) -> torch.utils.data.Dataset:
+    def get_torch_dataset(
+        self, split: Union[str, list[str]]
+    ) -> torch.utils.data.Dataset:
         """Get a PyTorch Dataset for training or inference.
 
         This method should return a standard PyTorch Dataset that yields samples
@@ -122,7 +124,9 @@ class StimulusDataset(ABC):
         """
 
     @abstractmethod
-    def filter(self, function: Callable, *, batched: bool = False, **kwargs: Any) -> "StimulusDataset":
+    def filter(
+        self, function: Callable, *, batched: bool = False, **kwargs: Any
+    ) -> "StimulusDataset":
         """Filter all splits in the dataset.
 
         Args:
@@ -226,7 +230,9 @@ class HuggingFaceDataset(StimulusDataset):
         """Get a column from a specific split."""
         return list(self._dataset[split][column_name])
 
-    def get_torch_dataset(self, split: Union[str, list[str]]) -> torch.utils.data.Dataset:
+    def get_torch_dataset(
+        self, split: Union[str, list[str]]
+    ) -> torch.utils.data.Dataset:
         """Get a PyTorch dataset for the specified split(s)."""
         if isinstance(split, list):
             splits = [self._dataset[s] for s in split]
@@ -272,7 +278,9 @@ class HuggingFaceDataset(StimulusDataset):
         # Element-level transform
         return self.map(transformation)
 
-    def filter(self, function: Callable, *, batched: bool = False, **kwargs: Any) -> "HuggingFaceDataset":
+    def filter(
+        self, function: Callable, *, batched: bool = False, **kwargs: Any
+    ) -> "HuggingFaceDataset":
         """Filter the dataset using a function."""
         new_dataset = self._dataset.filter(function, batched=batched, **kwargs)
         return HuggingFaceDataset(new_dataset)
@@ -335,7 +343,9 @@ class HuggingFaceDataset(StimulusDataset):
 class AnnDataTorchDataset(torch.utils.data.Dataset):
     """PyTorch Dataset wrapper for AnnData with lazy loading and metadata support."""
 
-    def __init__(self, adata: Any, columns: list[str], target_gene_col: str = "target_gene"):
+    def __init__(
+        self, adata: Any, columns: list[str], target_gene_col: str = "target_gene"
+    ):
         """Initialize the dataset.
 
         Args:
@@ -454,13 +464,19 @@ class H5adDataset(StimulusDataset):
 
     def get_column(self, split: str, column_name: str) -> Union[list[Any], np.ndarray]:
         """Get a column from a specific split."""
-        subset = self._adata[self._adata.obs[self._split_col] == split] if self._split_col else self._adata
+        subset = (
+            self._adata[self._adata.obs[self._split_col] == split]
+            if self._split_col
+            else self._adata
+        )
 
         if column_name == "X":
             return subset.X
         return subset.obs[column_name].values
 
-    def get_torch_dataset(self, split: Union[str, list[str]]) -> torch.utils.data.Dataset:
+    def get_torch_dataset(
+        self, split: Union[str, list[str]]
+    ) -> torch.utils.data.Dataset:
         """Get a PyTorch Dataset for training or inference."""
         if isinstance(split, list):
             # Concatenate subsets
@@ -472,7 +488,9 @@ class H5adDataset(StimulusDataset):
             elif split == ["train"]:
                 subset = self._adata
             else:
-                raise ValueError("Cannot select multiple splits without a split column.")
+                raise ValueError(
+                    "Cannot select multiple splits without a split column."
+                )
         elif self._split_col:
             subset = self._adata[self._adata.obs[self._split_col] == split]
         elif split == "train":
@@ -513,12 +531,18 @@ class H5adDataset(StimulusDataset):
             # Assume transformation takes AnnData and returns AnnData
             new_adata = transformation(self._adata)
             return H5adDataset(new_adata, self._split_col)
-        raise NotImplementedError("Element-wise apply is not yet supported for H5adDataset.")
+        raise NotImplementedError(
+            "Element-wise apply is not yet supported for H5adDataset."
+        )
 
-    def filter(self, function: Callable, *, batched: bool = False, **kwargs: Any) -> "StimulusDataset":
+    def filter(
+        self, function: Callable, *, batched: bool = False, **kwargs: Any
+    ) -> "StimulusDataset":
         """Filter all splits in the dataset."""
         # We can implement filter by iterating or applying mask
-        raise NotImplementedError("filter operation is not yet supported for H5adDataset.")
+        raise NotImplementedError(
+            "filter operation is not yet supported for H5adDataset."
+        )
 
     def save(self, path: str) -> None:
         """Save the dataset to disk.
@@ -532,18 +556,18 @@ class H5adDataset(StimulusDataset):
         if self._split_col and self._split_col in self._adata.obs:
             # Save each split to separate files in subdirectories
             os.makedirs(path, exist_ok=True)
-            
+
             for split_name in self.split_names:
                 split_dir = os.path.join(path, split_name)
                 os.makedirs(split_dir, exist_ok=True)
-                
+
                 # Get subset for this split
                 split_mask = self._adata.obs[self._split_col] == split_name
                 split_adata = self._adata[split_mask].copy()
-                
+
                 # Remove the split column from the subset (no longer needed)
                 split_adata.obs = split_adata.obs.drop(columns=[self._split_col])
-                
+
                 # Save to split subdirectory
                 split_path = os.path.join(split_dir, "data.h5ad")
                 split_adata.write_h5ad(split_path)
@@ -567,9 +591,8 @@ class H5adDataset(StimulusDataset):
 
         if os.path.isdir(path):
             # Check if directory contains split subdirectories
-            potential_splits = ["train", "test", "validation", "val"]
             found_splits = {}
-            
+
             for split_name in os.listdir(path):
                 split_path = os.path.join(path, split_name)
                 if os.path.isdir(split_path):
@@ -577,7 +600,7 @@ class H5adDataset(StimulusDataset):
                     h5ad_file = os.path.join(split_path, "data.h5ad")
                     if os.path.exists(h5ad_file):
                         found_splits[split_name] = h5ad_file
-            
+
             if found_splits:
                 # Load and combine splits
                 adatas = []
@@ -585,7 +608,7 @@ class H5adDataset(StimulusDataset):
                     split_adata = anndata.read_h5ad(split_file, **kwargs)
                     split_adata.obs["split"] = split_name
                     adatas.append(split_adata)
-                
+
                 combined_adata = anndata.concat(adatas, join="outer")
                 return cls(combined_adata, split_col="split")
             else:
@@ -602,7 +625,11 @@ class H5adDataset(StimulusDataset):
         """Select a subset of a split."""
         # This is used for splitting logic.
         # We need to return a subset of the data.
-        subset = self._adata[self._adata.obs[self._split_col] == split] if self._split_col else self._adata
+        subset = (
+            self._adata[self._adata.obs[self._split_col] == split]
+            if self._split_col
+            else self._adata
+        )
 
         return subset[indices]
 
