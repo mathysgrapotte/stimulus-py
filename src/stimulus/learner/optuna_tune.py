@@ -6,7 +6,6 @@ import logging
 import os
 import tempfile
 import uuid
-from collections.abc import Generator
 from typing import Any
 
 import optuna
@@ -348,6 +347,24 @@ class Objective:
     def _setup_model(self, trial: optuna.Trial) -> tuple[StimulusModel, dict]:
         """Setup the model for the trial."""
         model_suggestions = model_config_parser.suggest_parameters(trial, self.network_params)
+
+        # Inject dataset attributes if available
+        # Check if the dataset has 'dataset_attributes' property
+        if hasattr(self.train_torch_dataset, "dataset_attributes"):
+            dataset_attrs = self.train_torch_dataset.dataset_attributes
+            if dataset_attrs:
+                logger.info(f"Found dataset attributes: {dataset_attrs}")
+                # Update model suggestions with dataset attributes
+                # Note: This overrides config-suggested parameters if they share the same name
+                # This is intentional for input-dependent parameters (like input dimensions)
+                original_keys = set(model_suggestions.keys())
+                model_suggestions.update(dataset_attrs)
+
+                # Log usage
+                overridden = original_keys.intersection(dataset_attrs.keys())
+                if overridden:
+                    logger.info(f"Dataset attributes overrode config parameters: {overridden}")
+
         logger.info(f"Model suggestions: {model_suggestions}")
         model_instance = self.model_class(**model_suggestions)
 
@@ -480,7 +497,7 @@ class Objective:
         self,
         model_instance: StimulusModel,
         data_loader: torch.utils.data.DataLoader,
-        device: torch.device,
+        _device: torch.device,
     ) -> dict[str, float]:
         """Compute metrics by delegating to the model's validate method.
 
@@ -492,14 +509,9 @@ class Objective:
 
         The framework handles device placement by moving batches as they're yielded.
         """
-
-        # Create generator that moves batches to device
-        def device_batches() -> Generator[Any, None, None]:
-            for batch in data_loader:
-                yield _move_batch_to_device(batch, device)
-
-        # Delegate validation to model with device-aware batch iterator
-        return model_instance.validate(device_batches())
+        # Delegate validation to model
+        # Note: The model is responsible for moving batches to the appropriate device
+        return model_instance.validate(data_loader)
 
 
 def tune_loop(

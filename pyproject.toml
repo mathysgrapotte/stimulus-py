@@ -55,6 +55,7 @@ dependencies = [
     "typing-extensions>=4.0.0",
     "anndata>=0.11.4",
     "scanpy>=1.11.5",
+    "cell-eval>=0.6.6",
 ]
 
 [project.scripts]

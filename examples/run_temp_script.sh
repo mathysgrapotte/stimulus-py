@@ -16,10 +16,14 @@ uv run stimulus transform \
   --yaml transform_2000.yaml \
   --output output/vcc_2000.h5ad
 
-echo "Transforming (500 HVG)..."
-uv run stimulus transform \
-  --data output/vcc_split.h5ad \
-  --yaml transform_500.yaml \
-  --output output/vcc_500.h5ad
+
+echo "Running PCA Reconstruction Tuning..."
+rm -f output/pca_reconstruction/best_model.safetensors
+uv run stimulus tune \
+  --data output/vcc_2000.h5ad \
+  --model-config pca_reconstruction_config.yaml \
+  --model pca_reconstructor.py \
+  --optuna-results-dirpath output/pca_reconstruction \
+  --output output/pca_reconstruction/best_model.safetensors
 
 echo "Done!"

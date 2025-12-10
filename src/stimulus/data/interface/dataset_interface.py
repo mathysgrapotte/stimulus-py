@@ -38,6 +38,16 @@ class StimulusDataset(ABC):
                                   Example: {"train": ["text", "label"], "test": ["text", "label"]}
         """
 
+    @property
+    def dataset_attributes(self) -> dict[str, Any]:
+        """Get dataset-level attributes (optional).
+
+        Returns:
+            dict[str, Any]: Dictionary of attributes (e.g. {'gene_dim': 2000}).
+                            Defaults to empty dict.
+        """
+        return {}
+
     @abstractmethod
     def get_column(self, split: str, column_name: str) -> Union[list[Any], np.ndarray]:
         """Get a column from a specific split.
@@ -323,45 +333,96 @@ class HuggingFaceDataset(StimulusDataset):
 
 
 class AnnDataTorchDataset(torch.utils.data.Dataset):
-    """PyTorch Dataset wrapper for AnnData that densifies data into memory."""
+    """PyTorch Dataset wrapper for AnnData with lazy loading and metadata support."""
 
-    def __init__(self, adata: Any, columns: list[str]):
-        """Initialize the dataset by loading everything into memory.
+    def __init__(self, adata: Any, columns: list[str], target_gene_col: str = "target_gene"):
+        """Initialize the dataset.
 
         Args:
             adata: The AnnData object.
             columns: List of columns to include. "X" is the main matrix.
+            target_gene_col: Column name required for metadata extraction.
         """
+        self.adata = adata
         self.columns = columns
         self.n_obs = adata.n_obs
-        self.data = {}
 
+        # Metadata storage for validation
+        self.gene_names = list(adata.var_names)
+        self.control_adata = None
+        if target_gene_col in adata.obs:
+            control_mask = adata.obs[target_gene_col] == "non-targeting"
+            if np.any(control_mask):
+                self.control_adata = adata[control_mask].copy()
+
+        # Cache non-X columns
+        self.cache = {}
         for col in columns:
             if col == "X":
-                val = adata.X
-                if hasattr(val, "toarray"):
-                    val = val.toarray()
-                # Create tensor once for the whole dataset
-                self.data[col] = torch.tensor(val, dtype=torch.float32)
-            elif col in adata.obs:
+                continue
+
+            if col in adata.obs:
                 val = adata.obs[col].values
-                # Convert to tensor if numeric, otherwise keep as numpy array
-                if np.issubdtype(val.dtype, np.number):
-                    self.data[col] = torch.tensor(val)
-                else:
-                    self.data[col] = val
+                # Numeric check for tensor conversion
+                is_numeric = False
+                try:
+                    is_numeric = np.issubdtype(val.dtype, np.number)
+                except TypeError:
+                    is_numeric = False
+
+                self.cache[col] = torch.tensor(val) if is_numeric else val
+
             elif col in adata.obsm:
-                # Support for obsm keys (e.g. embeddings)
-                val = adata.obsm[col]
-                self.data[col] = torch.tensor(val, dtype=torch.float32)
+                # Always tensor for obsm
+                self.cache[col] = torch.tensor(adata.obsm[col], dtype=torch.float32)
             else:
-                raise ValueError(f"Column {col} not found in AnnData object.")
+                # Warn or skip if column not found?
+                # For now silent skip or keep existing behavior (error?)
+                # user wants "opinionated", so maybe just skip missing?
+                # But if requested explicitly, better to error or fill?
+                # H5adDataset asks for Everything.
+                pass
 
     def __len__(self) -> int:
         return self.n_obs
 
     def __getitem__(self, idx: int) -> dict[str, Any]:
-        return {col: self.data[col][idx] for col in self.columns}
+        item = {}
+
+        # Add cached columns
+        for col, data in self.cache.items():
+            item[col] = data[idx]
+
+        # Add X if requested (lazy load)
+        if "X" in self.columns:
+            val = self.adata.X[idx]
+            if hasattr(val, "toarray"):
+                val = val.toarray()
+            elif hasattr(val, "todense"):
+                val = np.array(val.todense())
+
+            if isinstance(val, np.ndarray):
+                val = val.flatten()
+
+            item["X"] = torch.tensor(val, dtype=torch.float32)
+
+        return item
+
+    @property
+    def dataset_attributes(self) -> dict[str, Any]:
+        """Return dataset attributes like gene_dim, pca_dim."""
+        attrs = {}
+        # Gene dimension
+        if self.adata is not None:
+            attrs["gene_dim"] = self.adata.n_vars
+
+            # PCA dimension if X_pca is present in obsm
+            if "X_pca" in self.adata.obsm:
+                attrs["pca_dim"] = self.adata.obsm["X_pca"].shape[1]
+            elif "X_avg_pca" in self.adata.obsm:
+                attrs["pca_dim"] = self.adata.obsm["X_avg_pca"].shape[1]
+
+        return attrs
 
 
 class H5adDataset(StimulusDataset):

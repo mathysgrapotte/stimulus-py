@@ -13,3 +13,10 @@ transforms:
             func: "pp.highly_variable_genes"
             n_top_genes: 2000
             subset: True
+        - name: "AveragePca"
+          params:
+            n_components: 50
+            field: "target_gene"
+            store_field: "X_avg_pca"
+            remove_target_field: "target_gene"
+            remove_target_values: ["non-targeting"]

@@ -166,8 +166,13 @@ class ModelTitanicPerformance(torch.nn.Module):
         num_batches = 0
 
         with torch.no_grad():
+            device = next(self.parameters()).device
             for batch in data_loader:
-                # Batches are already on the correct device via DeviceDataLoader wrapper
+                # Move batch to device
+                for k, v in batch.items():
+                    if isinstance(v, torch.Tensor):
+                        batch[k] = v.to(device)
+
                 output = self.forward(**batch).squeeze(-1)
 
                 # Compute loss and metrics

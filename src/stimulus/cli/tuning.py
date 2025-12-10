@@ -103,9 +103,12 @@ def tune(
     best_model_suggestions_artifact_id = best_trial.user_attrs["model_suggestions_id"]
 
     # Ensure output directories exist
-    os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
-    os.makedirs(os.path.dirname(best_optimizer_path), exist_ok=True)
-    os.makedirs(os.path.dirname(best_config_path), exist_ok=True)
+    if os.path.dirname(best_model_path):
+        os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
+    if os.path.dirname(best_optimizer_path):
+        os.makedirs(os.path.dirname(best_optimizer_path), exist_ok=True)
+    if os.path.dirname(best_config_path):
+        os.makedirs(os.path.dirname(best_config_path), exist_ok=True)
 
     optuna.artifacts.download_artifact(
         artifact_store=artifact_store,
