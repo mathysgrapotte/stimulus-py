@@ -1,7 +1,7 @@
 """This file contains the splitter classes for splitting data accordingly."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -37,7 +37,8 @@ class AbstractSplitter(ABC):
             data (dict): the data to be split
 
         Returns:
-            split_indices (list): the indices for train and test sets
+            train_indices (list): the indices for train set
+            test_indices (list): the indices for test set
         """
         raise NotImplementedError
 
@@ -128,4 +129,94 @@ class RandomSplit(AbstractSplitter):
         Returns:
             Distance between the points
         """
+        raise NotImplementedError
+
+class TargetGeneSplitter(AbstractSplitter):
+    """Split the data into train and test sets based on target genes."""
+
+    def __init__(
+        self,
+        target_gene_col: str = "target_gene",
+        target_genes: Optional[list[str]] = None,
+        split_ratio: Optional[Union[float, list[float]]] = None,
+        seed: int = 42,
+    ) -> None:
+        """Initialize the target gene splitter.
+
+        Args:
+            target_gene_col: Name of the column containing target genes
+            target_genes: List of specific target genes to include in the test set.
+            split_ratio: Ratio of genes to include in the test set. Can be a float (test ratio)
+                         or a list [train_ratio, test_ratio].
+            seed: Random seed for reproducibility
+        """
+        super().__init__(seed)
+        self.target_gene_col = target_gene_col
+        self.target_genes = target_genes
+        self.split_ratio = split_ratio
+
+        if self.target_genes is None and self.split_ratio is None:
+            raise ValueError("Either target_genes or split_ratio must be provided.")
+
+    def get_split_indexes(self, data: dict) -> tuple[list, list]:
+        """Splits the data indices based on target genes.
+
+        Args:
+            data (dict): Dictionary where keys are column names and values are lists of data.
+                         Must contain the target_gene_col.
+
+        Returns:
+            val_indices (list): The indices for the training set.
+            test_indices (list): The indices for the test set.
+        """
+        if self.target_gene_col not in data:
+            raise ValueError(f"Column {self.target_gene_col} not found in data.")
+
+        genes = np.array(data[self.target_gene_col])
+        unique_genes = np.unique(genes)
+
+        np.random.seed(self.seed)
+
+        if self.target_genes is not None:
+            # Case 1: Specific list of target genes for the test set
+            test_genes_set = set(self.target_genes)
+        else:
+            # Case 2: Random ratio of genes
+            # Determine test ratio
+            if isinstance(self.split_ratio, list):
+                if len(self.split_ratio) != 2:
+                    raise ValueError("split_ratio list must have length 2 [train, test].")
+                if abs(sum(self.split_ratio) - 1.0) > 1e-6:
+                    raise ValueError(f"split_ratio must sum to 1. Got {sum(self.split_ratio)}")
+                test_ratio = self.split_ratio[1]
+            else:
+                test_ratio = self.split_ratio
+
+            # Randomly select genes
+            n_test_genes = int(len(unique_genes) * test_ratio)
+            # Ensure at least one gene if ratio > 0 and genes exist
+            if n_test_genes == 0 and test_ratio > 0 and len(unique_genes) > 0:
+                n_test_genes = 1
+            
+            shuffled_genes = unique_genes.copy()
+            np.random.shuffle(shuffled_genes)
+            test_genes_set = set(shuffled_genes[:n_test_genes])
+
+        # Create masks
+        # Using numpy for efficiency if genes is numpy array, else list comp
+        # genes is already converted to numpy array above
+        
+        # We need to return indices
+        # np.isin returns boolean mask
+        is_test = np.isin(genes, list(test_genes_set))
+        
+        # Get indices
+        all_indices = np.arange(len(genes))
+        test_indices = all_indices[is_test].tolist()
+        train_indices = all_indices[~is_test].tolist()
+
+        return train_indices, test_indices
+
+    def distance(self, data_one: Any, data_two: Any) -> float:
+        """Calculate distance between two data points."""
         raise NotImplementedError

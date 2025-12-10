@@ -484,19 +484,15 @@ class H5adDataset(StimulusDataset):
         # We need to concatenate them and create a new AnnData object
         # and potentially add a split column.
 
+        target_split_col = self._split_col if self._split_col else "split"
+
         adatas = []
         for split_name, adata in splits.items():
             # Add split column
-            if self._split_col:
-                # If split col exists, update it
-                # But adata is a view or copy, so be careful
-                adata_copy = adata.copy()
-                adata_copy.obs[self._split_col] = split_name
-                adatas.append(adata_copy)
-            else:
-                # If no split col, we might need to create one if we are combining multiple splits
-                # For now, let's assume we just concat.
-                adatas.append(adata)
+            # adata is a view or copy, so be careful
+            adata_copy = adata.copy()
+            adata_copy.obs[target_split_col] = split_name
+            adatas.append(adata_copy)
 
         new_adata = anndata.concat(adatas, join="outer")
-        return H5adDataset(new_adata, self._split_col)
+        return H5adDataset(new_adata, split_col=target_split_col)

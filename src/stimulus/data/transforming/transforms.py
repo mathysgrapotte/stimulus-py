@@ -498,6 +498,8 @@ class ScanpyTransform(AbstractTransform):
 
         return data
 
+
+
     def transform_all(self, data: list[anndata.AnnData]) -> list[anndata.AnnData]:
         """Apply the scanpy function to multiple datasets using multiprocessing.
 
