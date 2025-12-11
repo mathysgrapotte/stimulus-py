@@ -191,11 +191,11 @@ def test_tune_loop_dual_storage(test_case: dict) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         train_data, val_data = test_case["train_data"], test_case["val_data"]
         artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=temp_dir)
-        
+
         # Primary storage (simulated DB via file-based storage for testing simplicity)
         primary_path = os.path.join(temp_dir, "primary.log")
         primary_storage = optuna.storages.JournalStorage(optuna.storages.journal.JournalFileBackend(primary_path))
-        
+
         # Secondary storage
         secondary_path = os.path.join(temp_dir, "secondary.log")
         secondary_storage = optuna.storages.JournalStorage(optuna.storages.journal.JournalFileBackend(secondary_path))
@@ -221,16 +221,16 @@ def test_tune_loop_dual_storage(test_case: dict) -> None:
             objective=objective,
             pruner=pruner,
             sampler=optuna.samplers.TPESampler(),
-            n_trials=2, # Small number of trials
+            n_trials=2,  # Small number of trials
             direction=test_case["model_config"].objective.direction,
             storage=primary_storage,
             secondary_storage=secondary_storage,
             study_name="dual-test",
         )
-        
+
         # Verify trials are in primary
         assert len(study.trials) == 2
-        
+
         # Verify trials are synced to secondary
         secondary_study = optuna.load_study(study_name="dual-test", storage=secondary_storage)
         assert len(secondary_study.trials) == 2
@@ -247,7 +247,7 @@ class TestTuneLoopWithStudyName:
             artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=temp_dir)
             storage = optuna.storages.JournalStorage(
                 optuna.storages.journal.JournalFileBackend(
-                    os.path.join(temp_dir, "optuna_journal_storage.log")
+                    os.path.join(temp_dir, "optuna_journal_storage.log"),
                 ),
             )
             pruner = optuna.pruners.MedianPruner(n_warmup_steps=50, n_startup_trials=2)
@@ -287,13 +287,13 @@ class TestTuneLoopWithStudyName:
             artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=temp_dir)
             storage = optuna.storages.JournalStorage(
                 optuna.storages.journal.JournalFileBackend(
-                    os.path.join(temp_dir, "optuna_journal_storage.log")
+                    os.path.join(temp_dir, "optuna_journal_storage.log"),
                 ),
             )
             pruner = optuna.pruners.MedianPruner(n_warmup_steps=50, n_startup_trials=2)
             device = get_device()
 
-            def create_objective():
+            def create_objective() -> optuna_tune.Objective:
                 return optuna_tune.Objective(
                     model_class=test_case["model_class"],
                     network_params=test_case["model_config"].network_params,

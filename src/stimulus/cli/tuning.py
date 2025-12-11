@@ -124,7 +124,7 @@ def tune(
 
     # If DB storage is provided, use it as primary and local as secondary
     if db_storage_url:
-        primary_storage = db_storage_url
+        primary_storage: optuna.storages.BaseStorage | str = db_storage_url
         secondary_storage = local_storage
     else:
         primary_storage = local_storage

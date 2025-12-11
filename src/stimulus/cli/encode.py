@@ -16,7 +16,7 @@ def encode(
     data_path: str,
     config_yaml: str,
     out_path: str,
-    num_proc: Optional[int] = None,
+    _num_proc: Optional[int] = None,
     dataset_cls: type[StimulusDataset] | None = None,
 ) -> None:
     """Encode the data according to the configuration.
@@ -25,7 +25,7 @@ def encode(
         data_path: Path to input data (Parquet or HuggingFace dataset directory).
         config_yaml: Path to config YAML file.
         out_path: Path to output encoded dataset directory.
-        num_proc: Number of processes to use for encoding.
+        _num_proc: Number of processes to use for encoding.
         dataset_cls: The dataset class to use for loading.
     """
     # Load the dataset

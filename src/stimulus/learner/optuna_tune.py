@@ -564,11 +564,11 @@ def tune_loop(
             load_if_exists=True,
         )
 
-        def sync_callback(study: optuna.Study, trial: optuna.trial.FrozenTrial) -> None:
+        def sync_callback(_study: optuna.Study, trial: optuna.trial.FrozenTrial) -> None:
             """Sync completed trial to secondary storage."""
             try:
                 secondary_study.add_trial(trial)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 # Log but don't fail the primary study if sync fails
                 logger.warning(f"Failed to sync trial {trial.number} to secondary storage: {e}")
 
@@ -576,4 +576,3 @@ def tune_loop(
 
     study.optimize(objective, n_trials=n_trials, callbacks=callbacks)
     return study
-

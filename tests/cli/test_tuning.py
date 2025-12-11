@@ -122,12 +122,12 @@ def test_tuning_dual_storage(
     with tempfile.TemporaryDirectory() as temp_dir:
         # Override to speed up test
         import yaml
-        from stimulus.learner.interface import model_schema
+
         with open(model_config) as f:
             config_dict = yaml.safe_load(f)
         config_dict["n_trials"] = 1
         config_dict["max_samples"] = 64
-        
+
         custom_config_path = os.path.join(temp_dir, "custom_config.yaml")
         with open(custom_config_path, "w") as f:
             yaml.dump(config_dict, f)
@@ -157,7 +157,7 @@ def test_tuning_dual_storage(
             # Check that output files were created (implies successful artifact download from local store)
             assert os.path.exists(best_model_path), "Best model file was not created"
             assert os.path.exists(best_optimizer_path), "Best optimizer file was not created"
-            
+
         finally:
-             if os.path.exists("runs"):
-                 shutil.rmtree("runs", ignore_errors=True)
+            if os.path.exists("runs"):
+                shutil.rmtree("runs", ignore_errors=True)
