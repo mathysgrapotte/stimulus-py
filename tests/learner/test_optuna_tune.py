@@ -50,7 +50,7 @@ def test_case(request: Any) -> dict:
     data = datasets.load_from_disk(case["data_path"])
     stimulus_data = HuggingFaceDataset(data)
     train_data = stimulus_data.get_torch_dataset("train")
-    val_data = stimulus_data.get_torch_dataset("test")
+    val_data = stimulus_data.get_torch_dataset("val")
 
     return {
         "name": case["name"],

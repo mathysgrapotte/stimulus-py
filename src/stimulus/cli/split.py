@@ -3,7 +3,7 @@
 
 Module currently under modification to be integrated with huggingface datasets.
 Current design choices :
-- Only focus on train/test splits rather than train/val/test
+- Focus on train/val splits
 - Splitter class gets a dict as input
 - We use save_to_disk to save the dataset to the disk with both splits at once.
 """

@@ -67,8 +67,8 @@ def test_split_main(
             os.path.join(output_path, "train"),
         ), "train split directory not found"
         assert os.path.exists(
-            os.path.join(output_path, "test"),
-        ), "test split directory not found"
+            os.path.join(output_path, "val"),
+        ), "val split directory not found"
 
 
 # @pytest.mark.skip(reason="Break github action runners")
@@ -93,7 +93,7 @@ def test_split_error_on_existing_split(
         )
 
         # 2. Try to split again using the output_path as input
-        with pytest.raises(ValueError, match="Test split already exists"):
+        with pytest.raises(ValueError, match="Validation split already exists"):
             split(
                 data_path=output_path,  # Now pointing to the directory with splits
                 config_yaml=yaml_path,

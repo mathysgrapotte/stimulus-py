@@ -52,7 +52,7 @@ def test_scanpy_transform_cli(h5ad_data: anndata.AnnData) -> None:
         with open(config_path, "w") as f:
             yaml.dump(config, f)
 
-        output_path = os.path.join(tmp_dir, "output.h5ad")
+        output_path = os.path.join(tmp_dir, "output")
 
         # Run transform
         transform(
@@ -62,11 +62,12 @@ def test_scanpy_transform_cli(h5ad_data: anndata.AnnData) -> None:
             dataset_cls=H5adDataset,
         )
 
-        # Verify output
-        assert os.path.exists(output_path)
+        # Verify output directory was created with train.h5ad
+        assert os.path.isdir(output_path)
+        assert os.path.exists(os.path.join(output_path, "train.h5ad"))
 
         # Load and check transformation
-        new_adata = anndata.read_h5ad(output_path)
+        new_adata = anndata.read_h5ad(os.path.join(output_path, "train.h5ad"))
 
         # Check if values are logged: log1p(x) should be < x for x > 0 (and x was rand[0,1])
         # Or simple exact check vs manual
@@ -107,7 +108,7 @@ def test_scanpy_transform_cli_chaining(h5ad_data: anndata.AnnData) -> None:
         with open(config_path, "w") as f:
             yaml.dump(config, f)
 
-        output_path = os.path.join(tmp_dir, "output.h5ad")
+        output_path = os.path.join(tmp_dir, "output")
 
         transform(
             data_path=input_path,
@@ -116,7 +117,7 @@ def test_scanpy_transform_cli_chaining(h5ad_data: anndata.AnnData) -> None:
             dataset_cls=H5adDataset,
         )
 
-        new_adata = anndata.read_h5ad(output_path)
+        new_adata = anndata.read_h5ad(os.path.join(output_path, "train.h5ad"))
 
         # Check manual calculation
         import scanpy as sc

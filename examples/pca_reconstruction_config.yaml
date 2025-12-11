@@ -3,8 +3,7 @@
 
 dataset:
     type: H5adDataset
-    params:
-        split_col: "split"
+    params: {}
 
 network_params:
   # pca_dim and gene_dim will be inferred from the dataset if available

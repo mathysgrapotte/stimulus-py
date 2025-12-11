@@ -15,7 +15,7 @@ transforms:
             subset: True
         - name: "AveragePca"
           params:
-            n_components: 50
+            n_components: 20
             field: "target_gene"
             store_field: "X_avg_pca"
             remove_target_field: "target_gene"

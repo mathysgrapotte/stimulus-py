@@ -53,7 +53,7 @@ def tune(
     dataset_dict = dataset_class.load_from_disk(data_path, **model_config.dataset.params)
 
     train_dataset = dataset_dict.get_torch_dataset("train")
-    validation_dataset = dataset_dict.get_torch_dataset("test")
+    validation_dataset = dataset_dict.get_torch_dataset("val")
 
     # get the pruner
     pruner = model_config_parser.get_pruner(model_config.pruner)

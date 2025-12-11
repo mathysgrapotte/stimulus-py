@@ -24,7 +24,7 @@ class TestHuggingFaceDataset:
             "col3": [0.1, 0.2, 0.3, 0.4, 0.5],
         }
         dataset = datasets.Dataset.from_dict(data)
-        return datasets.DatasetDict({"train": dataset, "test": dataset})
+        return datasets.DatasetDict({"train": dataset, "val": dataset})
 
     @pytest.fixture
     def stimulus_dataset(self, sample_dataset: datasets.DatasetDict) -> HuggingFaceDataset:
@@ -33,12 +33,12 @@ class TestHuggingFaceDataset:
 
     def test_split_names(self, stimulus_dataset: HuggingFaceDataset) -> None:
         """Test split_names property."""
-        assert set(stimulus_dataset.split_names) == {"train", "test"}
+        assert set(stimulus_dataset.split_names) == {"train", "val"}
 
     def test_column_names(self, stimulus_dataset: HuggingFaceDataset) -> None:
         """Test column_names property."""
         assert set(stimulus_dataset.column_names["train"]) == {"col1", "col2", "col3"}
-        assert set(stimulus_dataset.column_names["test"]) == {"col1", "col2", "col3"}
+        assert set(stimulus_dataset.column_names["val"]) == {"col1", "col2", "col3"}
 
     def test_get_column(self, stimulus_dataset: HuggingFaceDataset) -> None:
         """Test get_column method."""
@@ -89,9 +89,9 @@ class TestHuggingFaceDataset:
         """Test create_from_splits method."""
         indices = [0, 1]
         train_split = stimulus_dataset.select_split("train", indices)
-        test_split = stimulus_dataset.select_split("test", indices)
+        val_split = stimulus_dataset.select_split("val", indices)
 
-        new_dataset = stimulus_dataset.create_from_splits({"train": train_split, "test": test_split})
+        new_dataset = stimulus_dataset.create_from_splits({"train": train_split, "val": val_split})
         assert isinstance(new_dataset, HuggingFaceDataset)
         assert len(new_dataset.get_column("train", "col1")) == 2
 

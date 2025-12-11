@@ -108,8 +108,11 @@ def predict(
         >>> predictions = predict(test_dataset, trained_model)
         >>> print(predictions["predictions"])
     """
-    # Get concatenated torch dataset for all splits
-    all_splits_dataset = dataset.get_torch_dataset(dataset.split_names)
+    # Get torch datasets for all splits and concatenate them
+    split_datasets = dataset.get_torch_dataset(dataset.split_names)
+    # Concatenate all split datasets into one
+    all_datasets = list(split_datasets.values())
+    all_splits_dataset = torch.utils.data.ConcatDataset(all_datasets)
     loader = torch.utils.data.DataLoader(all_splits_dataset, batch_size=batch_size, shuffle=False)
 
     # create empty tensor for predictions
@@ -152,8 +155,8 @@ def split(
         >>> split_dataset = split(dataset, splitter, ["target_column"])
     """
     split_names = dataset.split_names
-    if "test" in split_names:
-        raise ValueError("Test split already exists. Cannot split again.")
+    if "val" in split_names:
+        raise ValueError("Validation split already exists. Cannot split again.")
 
     # We assume we are splitting the 'train' split
     if "train" not in split_names:
@@ -181,9 +184,9 @@ def split(
     train_indices, test_indices = splitter.get_split_indexes(column_data_dict)
 
     train_split_obj = dataset.select_split(target_split, train_indices)
-    test_split_obj = dataset.select_split(target_split, test_indices)
+    val_split_obj = dataset.select_split(target_split, test_indices)
 
-    return dataset.create_from_splits({"train": train_split_obj, "test": test_split_obj})
+    return dataset.create_from_splits({"train": train_split_obj, "val": val_split_obj})
 
 
 def transform(
@@ -260,7 +263,7 @@ def tune(
 
     # Convert to torch datasets
     train_torch_dataset = dataset.get_torch_dataset("train")
-    val_torch_dataset = dataset.get_torch_dataset("test")  # Using test as validation
+    val_torch_dataset = dataset.get_torch_dataset("val")
 
     # Create temporary artifact store
     with tempfile.TemporaryDirectory() as temp_dir:

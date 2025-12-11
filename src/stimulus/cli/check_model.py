@@ -43,7 +43,7 @@ def check_model(
     dataset_dict = dataset_cls.load_from_disk(data_path).unwrap
     dataset_dict.set_format("torch")
     train_dataset = dataset_dict["train"]
-    validation_dataset = dataset_dict["test"]
+    validation_dataset = dataset_dict["val"]
     logger.info("Dataset loaded successfully.")
 
     model_class = model_file_interface.import_class_from_file(model_path)

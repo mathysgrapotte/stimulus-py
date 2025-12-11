@@ -96,15 +96,15 @@ def test_target_gene_splitter_with_api(vcc_dataset: H5adDataset) -> None:
 
     # Verify split names
     assert "train" in split_dataset.split_names
-    assert "test" in split_dataset.split_names
+    assert "val" in split_dataset.split_names
 
-    # Verify content of test split
-    test_genes = split_dataset.get_column("test", "target_gene")
+    # Verify content of val split
+    val_genes = split_dataset.get_column("val", "target_gene")
     train_genes = split_dataset.get_column("train", "target_gene")
 
-    # Assert all 'PBX1' are in test
-    assert all(gene == "PBX1" for gene in test_genes)
+    # Assert all 'PBX1' are in val
+    assert all(gene == "PBX1" for gene in val_genes)
     # Assert no 'PBX1' in train
     assert all(gene != "PBX1" for gene in train_genes)
-    # Assert we actually have some test samples
-    assert len(test_genes) > 0
+    # Assert we actually have some val samples
+    assert len(val_genes) > 0
