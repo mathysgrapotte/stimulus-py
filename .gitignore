@@ -45,3 +45,5 @@ CLAUDE.md
 
 # Example outputs
 /examples/output
+best_config.json
+best_optimizer.pt

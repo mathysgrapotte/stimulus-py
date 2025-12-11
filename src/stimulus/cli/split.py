@@ -11,7 +11,10 @@ Current design choices :
 import logging
 
 from stimulus.api import split as split_api
-from stimulus.data.interface.dataset_interface import HuggingFaceDataset, StimulusDataset
+from stimulus.data.interface.dataset_interface import (
+    StimulusDataset,
+    auto_detect_dataset,
+)
 from stimulus.data.pipelines import split as split_pipeline
 
 logger = logging.getLogger(__name__)
@@ -21,7 +24,7 @@ def split(
     data_path: str,
     config_yaml: str,
     out_path: str,
-    dataset_cls: type[StimulusDataset] = HuggingFaceDataset,
+    dataset_cls: type[StimulusDataset] | None = None,
 ) -> None:
     """Split the data according to the configuration.
 
@@ -35,6 +38,9 @@ def split(
     splitter, split_columns = split_pipeline.load_splitters_from_config_from_path(config_yaml)
 
     # Load dataset using the unified loader
+    if dataset_cls is None:
+        dataset_cls = auto_detect_dataset(data_path)
+
     dataset = dataset_cls.load_from_disk(data_path)
 
     # Perform the split using the API

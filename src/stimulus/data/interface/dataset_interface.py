@@ -1,11 +1,12 @@
 """Interface for dataset wrappers."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, ClassVar, Optional, Union, cast
 
 import datasets
 import numpy as np
 import torch
+from torch.utils.data import Dataset
 
 
 class StimulusDataset(ABC):
@@ -18,6 +19,22 @@ class StimulusDataset(ABC):
     Users wishing to integrate a new dataset type should subclass this and implement
     all abstract methods.
     """
+
+    _registry: ClassVar[list[type["StimulusDataset"]]] = []
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Register the subclass."""
+        super().__init_subclass__(**kwargs)
+        StimulusDataset._registry.append(cls)
+
+    @classmethod
+    @abstractmethod
+    def file_extensions(cls) -> list[str]:
+        """Return the list of file extensions supported by this dataset.
+
+        Returns:
+             list[str]: A list of file extensions (e.g. ['.h5ad']).
+        """
 
     @property
     @abstractmethod
@@ -66,8 +83,9 @@ class StimulusDataset(ABC):
 
     @abstractmethod
     def get_torch_dataset(
-        self, split: Union[str, list[str]]
-    ) -> Union[torch.utils.data.Dataset, dict[str, torch.utils.data.Dataset]]:
+        self,
+        split: Union[str, list[str]],
+    ) -> Dataset[Any] | dict[str, Dataset[Any]]:
         """Get a PyTorch Dataset for training or inference.
 
         This method should return a standard PyTorch Dataset that yields samples
@@ -124,7 +142,11 @@ class StimulusDataset(ABC):
 
     @abstractmethod
     def filter(
-        self, function: Callable, *, batched: bool = False, **kwargs: Any
+        self,
+        function: Callable,
+        *,
+        batched: bool = False,
+        **kwargs: Any,
     ) -> "StimulusDataset":
         """Filter all splits in the dataset.
 
@@ -194,7 +216,7 @@ class StimulusDataset(ABC):
         """
 
 
-class TorchDatasetWrapper(torch.utils.data.Dataset):
+class TorchDatasetWrapper(Dataset[Any]):
     """Wrapper to make HuggingFace dataset compatible with torch.utils.data.Dataset."""
 
     def __init__(self, dataset: Any):
@@ -215,6 +237,11 @@ class HuggingFaceDataset(StimulusDataset):
         """Initialize the HuggingFaceDataset."""
         self._dataset = dataset
 
+    @classmethod
+    def file_extensions(cls) -> list[str]:
+        """Return the list of file extensions supported by this dataset."""
+        return [".parquet", ".arrow", ".csv", ".json"]
+
     @property
     def split_names(self) -> list[str]:
         """Return the list of split names."""
@@ -230,8 +257,9 @@ class HuggingFaceDataset(StimulusDataset):
         return list(self._dataset[split][column_name])
 
     def get_torch_dataset(
-        self, split: Union[str, list[str]]
-    ) -> Union[torch.utils.data.Dataset, dict[str, torch.utils.data.Dataset]]:
+        self,
+        split: Union[str, list[str]],
+    ) -> Dataset[Any] | dict[str, Dataset[Any]]:
         """Get a PyTorch dataset for the specified split(s).
 
         Args:
@@ -246,10 +274,9 @@ class HuggingFaceDataset(StimulusDataset):
             for s in split:
                 ds = self._dataset[s].with_format("torch")
                 result[s] = TorchDatasetWrapper(ds)
-            return result
-        else:
-            ds = self._dataset[split].with_format("torch")
-            return TorchDatasetWrapper(ds)
+            return cast("dict[str, Dataset[Any]]", result)
+        ds = self._dataset[split].with_format("torch")
+        return cast("Dataset[Any]", TorchDatasetWrapper(ds))
 
     def map(
         self,
@@ -274,20 +301,16 @@ class HuggingFaceDataset(StimulusDataset):
         """Apply a transformation to the dataset."""
         scope = getattr(transformation, "scope", "element")
         if scope == "dataset":
-            # For dataset-level transforms, we assume the transform takes the dataset
-            # and returns a new dataset (or modifies it if mutable, but HF is immutable-ish).
-            # We pass the wrapper itself to the transform? Or the underlying dataset?
-            # If we want to be generic, we should pass the wrapper.
-            # But existing transforms might not know about the wrapper.
-            # For now, let's assume the transform knows how to handle the wrapper
-            # OR we unwrap it if it's a known type.
-            # But to keep it simple:
             return transformation(self)
         # Element-level transform
         return self.map(transformation)
 
     def filter(
-        self, function: Callable, *, batched: bool = False, **kwargs: Any
+        self,
+        function: Callable,
+        *,
+        batched: bool = False,
+        **kwargs: Any,
     ) -> "HuggingFaceDataset":
         """Filter the dataset using a function."""
         new_dataset = self._dataset.filter(function, batched=batched, **kwargs)
@@ -348,11 +371,14 @@ class HuggingFaceDataset(StimulusDataset):
         return cls(dataset)
 
 
-class AnnDataTorchDataset(torch.utils.data.Dataset):
+class AnnDataTorchDataset(Dataset[Any]):
     """PyTorch Dataset wrapper for AnnData with lazy loading and metadata support."""
 
     def __init__(
-        self, adata: Any, columns: list[str], target_gene_col: str = "target_gene"
+        self,
+        adata: Any,
+        columns: list[str],
+        target_gene_col: str = "target_gene",
     ):
         """Initialize the dataset.
 
@@ -487,8 +513,9 @@ class H5adDataset(StimulusDataset):
         return adata.obs[column_name].values
 
     def get_torch_dataset(
-        self, split: Union[str, list[str]]
-    ) -> Union[torch.utils.data.Dataset, dict[str, torch.utils.data.Dataset]]:
+        self,
+        split: Union[str, list[str]],
+    ) -> Dataset[Any] | dict[str, Dataset[Any]]:
         """Get a PyTorch Dataset for training or inference.
 
         Args:
@@ -507,14 +534,13 @@ class H5adDataset(StimulusDataset):
                 adata = self._adata_dict[s]
                 cols = ["X", *list(adata.obs.columns), *list(adata.obsm.keys())]
                 result[s] = AnnDataTorchDataset(adata, cols)
-            return result
-        else:
-            # Single split - return a single dataset
-            if split not in self._adata_dict:
-                raise ValueError(f"Split {split} not found in dataset")
-            adata = self._adata_dict[split]
-            cols = ["X", *list(adata.obs.columns), *list(adata.obsm.keys())]
-            return AnnDataTorchDataset(adata, cols)
+            return cast("dict[str, Dataset[Any]]", result)
+        # Single split - return a single dataset
+        if split not in self._adata_dict:
+            raise ValueError(f"Split {split} not found in dataset")
+        adata = self._adata_dict[split]
+        cols = ["X", *list(adata.obs.columns), *list(adata.obsm.keys())]
+        return cast("Dataset[Any]", AnnDataTorchDataset(adata, cols))
 
     def map(
         self,
@@ -537,15 +563,19 @@ class H5adDataset(StimulusDataset):
                 new_adata_dict[split_name] = transformation(adata)
             return H5adDataset(new_adata_dict)
         raise NotImplementedError(
-            "Element-wise apply is not yet supported for H5adDataset."
+            "Element-wise apply is not yet supported for H5adDataset.",
         )
 
     def filter(
-        self, function: Callable, *, batched: bool = False, **kwargs: Any
+        self,
+        function: Callable,
+        *,
+        batched: bool = False,
+        **kwargs: Any,
     ) -> "StimulusDataset":
         """Filter all splits in the dataset."""
         raise NotImplementedError(
-            "filter operation is not yet supported for H5adDataset."
+            "filter operation is not yet supported for H5adDataset.",
         )
 
     def save(self, path: str) -> None:
@@ -579,6 +609,8 @@ class H5adDataset(StimulusDataset):
 
         import anndata
 
+        train_val_count = 2
+
         if os.path.isfile(path) and path.endswith(".h5ad"):
             # Single file load - wrap as {"train": adata}
             adata = anndata.read_h5ad(path, **kwargs)
@@ -597,7 +629,7 @@ class H5adDataset(StimulusDataset):
 
             if not h5ad_files:
                 raise ValueError(
-                    f"Directory {path} does not contain any .h5ad files"
+                    f"Directory {path} does not contain any .h5ad files",
                 )
 
             # Load based on number of files found
@@ -607,7 +639,7 @@ class H5adDataset(StimulusDataset):
                 adata = anndata.read_h5ad(file_path, **kwargs)
                 return cls({"train": adata})
 
-            if len(h5ad_files) == 2 and "train" in h5ad_files and "val" in h5ad_files:
+            if len(h5ad_files) == train_val_count and "train" in h5ad_files and "val" in h5ad_files:
                 # Exactly train and val - load both
                 adata_dict = {
                     "train": anndata.read_h5ad(h5ad_files["train"], **kwargs),
@@ -624,7 +656,7 @@ class H5adDataset(StimulusDataset):
             return cls({"train": merged})
 
         raise ValueError(
-            f"Path {path} is neither a .h5ad file nor a directory"
+            f"Path {path} is neither a .h5ad file nor a directory",
         )
 
     def select_split(self, split: str, indices: Any) -> Any:
@@ -646,3 +678,74 @@ class H5adDataset(StimulusDataset):
         for split_name, adata in splits.items():
             adata_dict[split_name] = adata.copy()
         return H5adDataset(adata_dict)
+
+    @classmethod
+    def file_extensions(cls) -> list[str]:
+        """Return the list of file extensions supported by this dataset."""
+        return [".h5ad"]
+
+
+########################################################################################
+# Auto dataset detection logic
+########################################################################################
+
+
+def find_first_file(path: str) -> Optional[str]:
+    """Find the first file in a directory."""
+    import os
+
+    if os.path.isfile(path):
+        return path
+
+    if os.path.isdir(path):
+        for file in os.listdir(path):
+            full_path = os.path.join(path, file)
+            if os.path.isfile(full_path):
+                return full_path
+            if os.path.isdir(full_path):
+                result = find_first_file(full_path)
+                if result:
+                    return result
+
+    return None
+
+
+def auto_detect_dataset(path: str) -> type[StimulusDataset]:
+    """Auto-detect the dataset class based on the file extension.
+
+    This function recursively searches for a file in the input path
+    and checks its extension against supported dataset classes.
+
+    Args:
+        path: Path to the dataset.
+
+    Returns:
+        The detected StimulusDataset subclass.
+
+    Raises:
+        ValueError: If no supported file extension is found.
+    """
+    import os
+
+    first_file = find_first_file(path)
+
+    if first_file is None:
+        raise ValueError(f"Could not find any files in {path}.")
+
+    extension = os.path.splitext(first_file)[1]
+
+    output = None
+    support_extensions = []
+
+    for dataset_class in StimulusDataset.__subclasses__():
+        current_dataset_class_extensions = dataset_class.file_extensions()
+        support_extensions.extend(current_dataset_class_extensions)
+        if extension in current_dataset_class_extensions:
+            output = dataset_class
+
+    if output is None:
+        raise ValueError(
+            f"Unsupported file extension found in {path}. "
+            f"Extension: {extension}. Supported extensions: {support_extensions}",
+        )
+    return output

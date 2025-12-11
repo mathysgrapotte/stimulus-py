@@ -3,7 +3,10 @@
 import logging
 from typing import Optional
 
-from stimulus.data.interface.dataset_interface import HuggingFaceDataset, StimulusDataset
+from stimulus.data.interface.dataset_interface import (
+    StimulusDataset,
+    auto_detect_dataset,
+)
 from stimulus.data.pipelines import encode as encode_pipeline
 
 logger = logging.getLogger(__name__)
@@ -14,7 +17,7 @@ def encode(
     config_yaml: str,
     out_path: str,
     num_proc: Optional[int] = None,
-    dataset_cls: type[StimulusDataset] = HuggingFaceDataset,
+    dataset_cls: type[StimulusDataset] | None = None,
 ) -> None:
     """Encode the data according to the configuration.
 
@@ -26,6 +29,9 @@ def encode(
         dataset_cls: The dataset class to use for loading.
     """
     # Load the dataset
+    if dataset_cls is None:
+        dataset_cls = auto_detect_dataset(data_path)
+
     dataset = dataset_cls.load_from_disk(data_path)
 
     # Load encoders from config

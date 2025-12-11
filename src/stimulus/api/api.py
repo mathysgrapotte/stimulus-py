@@ -112,7 +112,7 @@ def predict(
     split_datasets = dataset.get_torch_dataset(dataset.split_names)
     # Concatenate all split datasets into one
     all_datasets = list(split_datasets.values())
-    all_splits_dataset = torch.utils.data.ConcatDataset(all_datasets)
+    all_splits_dataset: torch.utils.data.ConcatDataset = torch.utils.data.ConcatDataset(all_datasets)
     loader = torch.utils.data.DataLoader(all_splits_dataset, batch_size=batch_size, shuffle=False)
 
     # create empty tensor for predictions

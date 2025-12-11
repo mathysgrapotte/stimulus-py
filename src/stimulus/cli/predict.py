@@ -8,7 +8,10 @@ import datasets
 import safetensors.torch as safetensors
 import torch
 
-from stimulus.data.interface.dataset_interface import HuggingFaceDataset, StimulusDataset
+from stimulus.data.interface.dataset_interface import (
+    StimulusDataset,
+    auto_detect_dataset,
+)
 from stimulus.typing.protocols import StimulusModel
 from stimulus.utils.model_file_interface import import_class_from_file
 
@@ -88,7 +91,7 @@ def predict(
     weight_path: str,
     output: str,
     batch_size: int = 256,
-    dataset_cls: type[StimulusDataset] = HuggingFaceDataset,
+    dataset_cls: type[StimulusDataset] | None = None,
 ) -> None:
     """Run model prediction pipeline.
 
@@ -118,6 +121,9 @@ def predict(
             loss_fn_name = param_value
             break
 
+    # Backward compatibility for nested params?
+    # No, assuming flat loss_params for now as per schema
+
     if not loss_fn_name:
         raise ValueError(f"Could not extract loss function from loss_params: {loss_params}")
 
@@ -131,6 +137,10 @@ def predict(
 
     # Get the best model with best architecture and weights
     model = load_model(model_path, model_config_path, weight_path)
+
+    if dataset_cls is None:
+        dataset_cls = auto_detect_dataset(data_path)
+
     dataset = dataset_cls.load_from_disk(data_path)
     dataset.set_format(type="torch")
     splits = [dataset[split_name] for split_name in dataset]

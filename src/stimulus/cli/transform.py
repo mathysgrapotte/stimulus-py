@@ -6,7 +6,10 @@ from typing import Any
 
 import pandas as pd
 
-from stimulus.data.interface.dataset_interface import HuggingFaceDataset, StimulusDataset
+from stimulus.data.interface.dataset_interface import (
+    StimulusDataset,
+    auto_detect_dataset,
+)
 from stimulus.data.pipelines import transform as transform_pipeline
 
 logger = logging.getLogger(__name__)
@@ -16,7 +19,7 @@ def transform(
     data_path: str,
     config_yaml: str,
     out_path: str,
-    dataset_cls: type[StimulusDataset] = HuggingFaceDataset,
+    dataset_cls: type[StimulusDataset] | None = None,
 ) -> None:
     """Transform the data according to the configuration.
 
@@ -26,6 +29,9 @@ def transform(
         out_path: Path to output transformed dataset.
         dataset_cls: The dataset class to use for loading.
     """
+    if dataset_cls is None:
+        dataset_cls = auto_detect_dataset(data_path)
+
     dataset = dataset_cls.load_from_disk(data_path)
 
     # Create transforms from the config

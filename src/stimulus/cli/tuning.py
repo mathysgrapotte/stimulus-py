@@ -49,8 +49,8 @@ def tune(
     # Load train and validation datasets
     from stimulus.data.interface import dataset_interface
 
-    dataset_class = getattr(dataset_interface, model_config.dataset.type)
-    dataset_dict = dataset_class.load_from_disk(data_path, **model_config.dataset.params)
+    dataset_class = dataset_interface.auto_detect_dataset(data_path)
+    dataset_dict = dataset_class.load_from_disk(data_path)
 
     train_dataset = dataset_dict.get_torch_dataset("train")
     validation_dataset = dataset_dict.get_torch_dataset("val")

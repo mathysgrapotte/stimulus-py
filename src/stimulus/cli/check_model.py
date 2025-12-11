@@ -9,7 +9,10 @@ import optuna
 import optuna.storages.journal
 import yaml
 
-from stimulus.data.interface.dataset_interface import HuggingFaceDataset, StimulusDataset
+from stimulus.data.interface.dataset_interface import (
+    StimulusDataset,
+    auto_detect_dataset,
+)
 from stimulus.learner import optuna_tune
 from stimulus.learner.device_utils import resolve_device
 from stimulus.learner.interface import model_schema
@@ -28,7 +31,7 @@ def check_model(
     model_config_path: str,
     optuna_results_dirpath: str = "./optuna_results",
     force_device: Optional[str] = None,
-    dataset_cls: type[StimulusDataset] = HuggingFaceDataset,
+    dataset_cls: type[StimulusDataset] | None = None,
 ) -> tuple[str, str]:
     """Run the main model checking pipeline.
 
@@ -40,6 +43,9 @@ def check_model(
         force_device: Force the device to use.
         dataset_cls: The dataset class to use for loading.
     """
+    if dataset_cls is None:
+        dataset_cls = auto_detect_dataset(data_path)
+
     dataset_dict = dataset_cls.load_from_disk(data_path).unwrap
     dataset_dict.set_format("torch")
     train_dataset = dataset_dict["train"]
