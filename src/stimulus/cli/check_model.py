@@ -46,10 +46,13 @@ def check_model(
     if dataset_cls is None:
         dataset_cls = auto_detect_dataset(data_path)
 
-    dataset_dict = dataset_cls.load_from_disk(data_path).unwrap
-    dataset_dict.set_format("torch")
-    train_dataset = dataset_dict["train"]
-    validation_dataset = dataset_dict["val"]
+    dataset = dataset_cls.load_from_disk(data_path)
+    train_dataset = dataset.get_torch_dataset("train")
+    if "val" in dataset.split_names:
+        validation_dataset = dataset.get_torch_dataset("val")
+    else:
+        validation_dataset = None
+        logger.warning("No validation split found in dataset.")
     logger.info("Dataset loaded successfully.")
 
     model_class = model_file_interface.import_class_from_file(model_path)

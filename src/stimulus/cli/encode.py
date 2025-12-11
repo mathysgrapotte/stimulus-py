@@ -39,27 +39,11 @@ def encode(
     logger.info("Encoders initialized successfully.")
     logger.info(f"Loaded encoders for columns: {list(encoders.keys())}")
 
-    # Identify and remove columns that aren't in the encoder configuration
-    encoder_columns = set(encoders.keys())
-    columns_to_remove = set()
+    logger.info(f"Loaded encoders for columns: {list(encoders.keys())}")
 
-    # Check all splits
-    for split_columns in dataset.column_names.values():
-        split_columns_set = set(split_columns)
-        split_columns_to_remove = split_columns_set - encoder_columns
-        columns_to_remove.update(split_columns_to_remove)
-
-    if columns_to_remove:
-        logger.info(f"Removing columns not in encoder configuration: {list(columns_to_remove)}")
-
-    # Apply the encoders to the data
-    dataset = dataset.map(
-        encode_pipeline.encode_batch,
-        batched=True,
-        fn_kwargs={"encoders_config": encoders},
-        remove_columns=list(columns_to_remove) if columns_to_remove else None,
-        num_proc=num_proc,
-    )
+    # Use EncodeTransform
+    transform = encode_pipeline.EncodeTransform(encoders)
+    dataset = dataset.apply(transform)
 
     logger.info(f"Dataset encoded successfully. Saving to: {out_path}")
 

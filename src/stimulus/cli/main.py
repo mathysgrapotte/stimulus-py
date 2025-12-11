@@ -270,6 +270,20 @@ def encode(
     default=None,
     help="Force the use of a specific device. Example: --force-device cuda:0",
 )
+@click.option(
+    "-s",
+    "--storage",
+    default=None,
+    help="Optuna storage URL (e.g., postgresql://user:pass@host/db) or file path for shared logging. "
+    "Enables real-time visualization with optuna-dashboard.",
+)
+@click.option(
+    "-n",
+    "--study-name",
+    default=None,
+    help="Optuna study name. Required when --storage is set. "
+    "Multiple processes with the same study name will share trials.",
+)
 def tune(
     data: str,
     model: str,
@@ -278,6 +292,8 @@ def tune(
     best_optimizer: str,
     optuna_results_dirpath: str,
     force_device: Optional[str] = None,
+    storage: Optional[str] = None,
+    study_name: Optional[str] = None,
 ) -> None:
     """Run hyperparameter tuning for a model."""
     tune_func(
@@ -288,6 +304,8 @@ def tune(
         best_model_path=output,
         best_optimizer_path=best_optimizer,
         force_device=force_device,
+        storage=storage,
+        study_name=study_name,
     )
 
 

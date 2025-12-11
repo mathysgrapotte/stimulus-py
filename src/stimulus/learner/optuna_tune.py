@@ -520,7 +520,9 @@ def tune_loop(
     sampler: optuna.samplers.BaseSampler,
     n_trials: int,
     direction: str,
-    storage: optuna.storages.BaseStorage | None = None,
+    storage: optuna.storages.BaseStorage | str | None = None,
+    secondary_storage: optuna.storages.BaseStorage | None = None,
+    study_name: str | None = None,
 ) -> optuna.Study:
     """Run the tuning loop.
 
@@ -530,7 +532,11 @@ def tune_loop(
         sampler: The sampler to use.
         n_trials: The number of trials to run.
         direction: The direction to optimize.
-        storage: The storage to use.
+        storage: The storage to use. Can be a BaseStorage instance or a URL string.
+        secondary_storage: Optional secondary storage to sync trials to (e.g., local file when using DB).
+        study_name: The name of the study. Required for shared storage across processes.
+            When provided with storage, load_if_exists=True allows multiple processes
+            to join the same study.
 
     Returns:
         The study object.
@@ -538,6 +544,36 @@ def tune_loop(
     if storage is None:
         study = optuna.create_study(direction=direction, sampler=sampler, pruner=pruner)
     else:
-        study = optuna.create_study(direction=direction, sampler=sampler, pruner=pruner, storage=storage)
-    study.optimize(objective, n_trials=n_trials)
+        # Use load_if_exists=True to allow multiple processes to join the same study
+        study = optuna.create_study(
+            direction=direction,
+            sampler=sampler,
+            pruner=pruner,
+            storage=storage,
+            study_name=study_name,
+            load_if_exists=True,
+        )
+
+    callbacks = []
+    if secondary_storage is not None:
+        # separate study for secondary storage
+        secondary_study = optuna.create_study(
+            storage=secondary_storage,
+            study_name=study_name or "secondary_study",
+            direction=direction,
+            load_if_exists=True,
+        )
+
+        def sync_callback(study: optuna.Study, trial: optuna.trial.FrozenTrial) -> None:
+            """Sync completed trial to secondary storage."""
+            try:
+                secondary_study.add_trial(trial)
+            except Exception as e:
+                # Log but don't fail the primary study if sync fails
+                logger.warning(f"Failed to sync trial {trial.number} to secondary storage: {e}")
+
+        callbacks.append(sync_callback)
+
+    study.optimize(objective, n_trials=n_trials, callbacks=callbacks)
     return study
+

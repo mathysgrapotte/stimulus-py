@@ -42,6 +42,8 @@ dependencies = [
     "syrupy>=4.8.0",
     "torch>=2.3.1",
     "optuna>=4.0.0",
+    "psycopg2-binary>=2.9.0",  # PostgreSQL driver for Optuna RDB storage
+    "pymysql>=1.1.0",  # MySQL driver for Optuna RDB storage (pure Python)
     "click>=8.1.0",
     "importlib_metadata",
     "datasets>=3.6.0",
@@ -56,6 +58,7 @@ dependencies = [
     "anndata>=0.11.4",
     "scanpy>=1.11.5",
     "cell-eval>=0.6.6",
+    "optuna-dashboard>=0.20.0",
 ]
 
 [project.scripts]

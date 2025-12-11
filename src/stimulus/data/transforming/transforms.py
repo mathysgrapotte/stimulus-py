@@ -588,7 +588,12 @@ class AveragePca(AbstractTransform):
         self.field = field
         self.store_field = store_field
         self.remove_target_field = remove_target_field
-        self.remove_target_values = remove_target_values
+        self.remove_target_field = remove_target_field
+        if isinstance(remove_target_values, str):
+            self.remove_target_values = [remove_target_values]
+        else:
+            self.remove_target_values = remove_target_values
+        self.seed = seed
         self.seed = seed
         self.scope = "dataset"
         self.loadings = None

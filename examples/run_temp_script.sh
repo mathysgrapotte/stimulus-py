@@ -17,10 +17,16 @@ uv run stimulus transform \
   --output output/vcc_2000
 
 
+echo "Encoding..."
+uv run stimulus encode \
+  --data output/vcc_2000 \
+  --yaml encode.yaml \
+  --output output/vcc_encoded
+
 echo "Running PCA Reconstruction Tuning..."
 rm -f output/pca_reconstruction/best_model.safetensors
 uv run stimulus tune \
-  --data output/vcc_2000 \
+  --data output/vcc_encoded \
   --model-config pca_reconstruction_config.yaml \
   --model pca_reconstructor.py \
   --optuna-results-dirpath output/pca_reconstruction \
