@@ -20,8 +20,14 @@ def adata() -> anndata.AnnData:
     x = np.random.rand(n_obs, n_vars)
     obs = pd.DataFrame(
         {
-            "group": pd.Series([str(x) for x in np.random.choice(["A", "B"], size=n_obs)], dtype="object"),
-            "split": pd.Series([str(x) for x in np.random.choice(["train", "test"], size=n_obs)], dtype="object"),
+            "group": pd.Series(
+                [str(x) for x in np.random.choice(["A", "B"], size=n_obs)],
+                dtype="object",
+            ),
+            "split": pd.Series(
+                [str(x) for x in np.random.choice(["train", "test"], size=n_obs)],
+                dtype="object",
+            ),
             "value": np.random.rand(n_obs),
         },
     )
@@ -74,23 +80,33 @@ def test_anndata_dataset_torch_dataset(adata: anndata.AnnData) -> None:
     assert isinstance(item["value"], torch.Tensor)
 
 
-@pytest.mark.xfail(reason="AnnData persistence issue with string/categorical columns")
 def test_save_load_h5ad(adata: anndata.AnnData) -> None:
-    """Test save and load."""
+    """Test save and load with splits saved as separate files in subdirectories."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        path = os.path.join(temp_dir, "test.h5ad")
+        path = os.path.join(temp_dir, "test_split_dataset")
         dataset = H5adDataset(adata, split_col="split")
         dataset.save(path)
 
-        assert os.path.exists(path)
+        # Check that directory structure was created
+        assert os.path.isdir(path)
+        assert os.path.isdir(os.path.join(path, "train"))
+        assert os.path.isdir(os.path.join(path, "test"))
+        assert os.path.exists(os.path.join(path, "train", "data.h5ad"))
+        assert os.path.exists(os.path.join(path, "test", "data.h5ad"))
 
-        loaded_dataset = H5adDataset.load_from_disk(path, split_col="split")
+        # Load back and verify
+        loaded_dataset = H5adDataset.load_from_disk(path)
         assert set(loaded_dataset.split_names) == {"train", "test"}
-        assert len(loaded_dataset.get_torch_dataset("train")) == len(dataset.get_torch_dataset("train"))
+        assert len(loaded_dataset.get_torch_dataset("train")) == len(
+            dataset.get_torch_dataset("train")
+        )
+        assert len(loaded_dataset.get_torch_dataset("test")) == len(
+            dataset.get_torch_dataset("test")
+        )
 
 
 def test_save_load_h5ad_numeric() -> None:
-    """Test save and load with numeric only."""
+    """Test save and load with numeric only (single file, no splits)."""
     n_obs = 100
     n_vars = 50
     x = np.random.rand(n_obs, n_vars)
@@ -103,6 +119,7 @@ def test_save_load_h5ad_numeric() -> None:
         dataset = H5adDataset(adata)
         dataset.save(path)
 
+        # For datasets without splits, still saves as single file
         assert os.path.exists(path)
         loaded_dataset = H5adDataset.load_from_disk(path)
         assert len(loaded_dataset.get_torch_dataset("train")) == 100

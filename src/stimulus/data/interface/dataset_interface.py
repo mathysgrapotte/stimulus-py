@@ -65,7 +65,9 @@ class StimulusDataset(ABC):
         """
 
     @abstractmethod
-    def get_torch_dataset(self, split: Union[str, list[str]]) -> torch.utils.data.Dataset:
+    def get_torch_dataset(
+        self, split: Union[str, list[str]]
+    ) -> torch.utils.data.Dataset:
         """Get a PyTorch Dataset for training or inference.
 
         This method should return a standard PyTorch Dataset that yields samples
@@ -122,7 +124,9 @@ class StimulusDataset(ABC):
         """
 
     @abstractmethod
-    def filter(self, function: Callable, *, batched: bool = False, **kwargs: Any) -> "StimulusDataset":
+    def filter(
+        self, function: Callable, *, batched: bool = False, **kwargs: Any
+    ) -> "StimulusDataset":
         """Filter all splits in the dataset.
 
         Args:
@@ -226,7 +230,9 @@ class HuggingFaceDataset(StimulusDataset):
         """Get a column from a specific split."""
         return list(self._dataset[split][column_name])
 
-    def get_torch_dataset(self, split: Union[str, list[str]]) -> torch.utils.data.Dataset:
+    def get_torch_dataset(
+        self, split: Union[str, list[str]]
+    ) -> torch.utils.data.Dataset:
         """Get a PyTorch dataset for the specified split(s)."""
         if isinstance(split, list):
             splits = [self._dataset[s] for s in split]
@@ -272,7 +278,9 @@ class HuggingFaceDataset(StimulusDataset):
         # Element-level transform
         return self.map(transformation)
 
-    def filter(self, function: Callable, *, batched: bool = False, **kwargs: Any) -> "HuggingFaceDataset":
+    def filter(
+        self, function: Callable, *, batched: bool = False, **kwargs: Any
+    ) -> "HuggingFaceDataset":
         """Filter the dataset using a function."""
         new_dataset = self._dataset.filter(function, batched=batched, **kwargs)
         return HuggingFaceDataset(new_dataset)
@@ -335,7 +343,9 @@ class HuggingFaceDataset(StimulusDataset):
 class AnnDataTorchDataset(torch.utils.data.Dataset):
     """PyTorch Dataset wrapper for AnnData with lazy loading and metadata support."""
 
-    def __init__(self, adata: Any, columns: list[str], target_gene_col: str = "target_gene"):
+    def __init__(
+        self, adata: Any, columns: list[str], target_gene_col: str = "target_gene"
+    ):
         """Initialize the dataset.
 
         Args:
@@ -428,63 +438,117 @@ class AnnDataTorchDataset(torch.utils.data.Dataset):
 class H5adDataset(StimulusDataset):
     """Wrapper for AnnData objects loaded from .h5ad files."""
 
-    def __init__(self, adata: Any, split_col: Optional[str] = None):
+    def __init__(
+        self,
+        adata: Union[Any, dict[str, Any]],
+        split_col: Optional[str] = None,
+    ):
         """Initialize the H5adDataset.
 
         Args:
-            adata: The AnnData object.
+            adata: Either a single AnnData object or a dictionary of {split_name: AnnData}.
             split_col: Name of the column in adata.obs that defines the splits.
+                       Only used when adata is a single AnnData object.
                        If None, assumes a single 'train' split.
         """
-        self._adata = adata
-        self._split_col = split_col
+        if isinstance(adata, dict):
+            # Dictionary of split_name -> AnnData
+            self._adata_dict = adata
+            self._adata = None
+            self._split_col = None
+        else:
+            # Single AnnData object
+            self._adata = adata
+            self._adata_dict = None
+            self._split_col = split_col
 
     @property
     def split_names(self) -> list[str]:
         """Get the names of available splits."""
-        if self._split_col:
+        if self._adata_dict is not None:
+            return list(self._adata_dict.keys())
+        elif self._split_col:
             return list(self._adata.obs[self._split_col].unique())
         return ["train"]
 
     @property
     def column_names(self) -> dict[str, list[str]]:
         """Get column names for each split."""
-        cols = ["X", *list(self._adata.obs.columns)]
-        return dict.fromkeys(self.split_names, cols)
+        if self._adata_dict is not None:
+            # Dictionary mode: get columns from each split
+            result = {}
+            for split_name, adata in self._adata_dict.items():
+                cols = ["X", *list(adata.obs.columns)]
+                result[split_name] = cols
+            return result
+        else:
+            # Single AnnData mode
+            cols = ["X", *list(self._adata.obs.columns)]
+            return dict.fromkeys(self.split_names, cols)
 
     def get_column(self, split: str, column_name: str) -> Union[list[Any], np.ndarray]:
         """Get a column from a specific split."""
-        subset = self._adata[self._adata.obs[self._split_col] == split] if self._split_col else self._adata
+        if self._adata_dict is not None:
+            # Dictionary mode
+            if split not in self._adata_dict:
+                raise ValueError(f"Split {split} not found in dataset")
+            adata = self._adata_dict[split]
+            if column_name == "X":
+                return adata.X
+            return adata.obs[column_name].values
+        else:
+            # Single AnnData mode
+            subset = (
+                self._adata[self._adata.obs[self._split_col] == split]
+                if self._split_col
+                else self._adata
+            )
 
-        if column_name == "X":
-            return subset.X
-        return subset.obs[column_name].values
+            if column_name == "X":
+                return subset.X
+            return subset.obs[column_name].values
 
-    def get_torch_dataset(self, split: Union[str, list[str]]) -> torch.utils.data.Dataset:
+    def get_torch_dataset(
+        self, split: Union[str, list[str]]
+    ) -> torch.utils.data.Dataset:
         """Get a PyTorch Dataset for training or inference."""
-        if isinstance(split, list):
-            # Concatenate subsets
-            # For AnnData, we can just filter the original object
-            if self._split_col:
-                mask = self._adata.obs[self._split_col].isin(split)
-                subset = self._adata[mask]
-            # If no split col, and we ask for multiple splits, it's ambiguous unless it's just ['train']
-            elif split == ["train"]:
+        if self._adata_dict is not None:
+            # Dictionary mode
+            import anndata
+
+            if isinstance(split, list):
+                # Concatenate multiple splits
+                subsets = []
+                for s in split:
+                    if s not in self._adata_dict:
+                        raise ValueError(f"Split {s} not found in dataset")
+                    subsets.append(self._adata_dict[s])
+                subset = anndata.concat(subsets, join="outer")
+            else:
+                # Single split
+                if split not in self._adata_dict:
+                    raise ValueError(f"Split {split} not found in dataset")
+                subset = self._adata_dict[split]
+        else:
+            # Single AnnData mode
+            if isinstance(split, list):
+                # Concatenate subsets
+                if self._split_col:
+                    mask = self._adata.obs[self._split_col].isin(split)
+                    subset = self._adata[mask]
+                elif split == ["train"]:
+                    subset = self._adata
+                else:
+                    raise ValueError(
+                        "Cannot select multiple splits without a split column."
+                    )
+            elif self._split_col:
+                subset = self._adata[self._adata.obs[self._split_col] == split]
+            elif split == "train":
                 subset = self._adata
             else:
-                raise ValueError("Cannot select multiple splits without a split column.")
-        elif self._split_col:
-            subset = self._adata[self._adata.obs[self._split_col] == split]
-        elif split == "train":
-            subset = self._adata
-        else:
-            raise ValueError(f"Split {split} not found.")
+                raise ValueError(f"Split {split} not found.")
 
-        # By default, include all columns + X
-        # In practice, users might want to select specific columns.
-        # The StimulusDataset interface doesn't strictly define how to select columns for the torch dataset
-        # other than what the model expects.
-        # For now, let's include X and all obs columns.
         # Include X, all obs columns, and all obsm keys (e.g. PCA, embeddings)
         cols = ["X", *list(subset.obs.columns), *list(subset.obsm.keys())]
         return AnnDataTorchDataset(subset, cols)
@@ -507,63 +571,154 @@ class H5adDataset(StimulusDataset):
     def apply(self, transformation: Callable) -> "StimulusDataset":
         """Apply a transformation to the dataset."""
         # Similar to map, but for dataset-level transforms.
-        # If the transformation expects an AnnData object, we can pass it.
         scope = getattr(transformation, "scope", "element")
         if scope == "dataset":
-            # Assume transformation takes AnnData and returns AnnData
-            new_adata = transformation(self._adata)
-            return H5adDataset(new_adata, self._split_col)
-        raise NotImplementedError("Element-wise apply is not yet supported for H5adDataset.")
+            if self._adata_dict is not None:
+                # Dictionary mode: apply to each split
+                new_adata_dict = {}
+                for split_name, adata in self._adata_dict.items():
+                    new_adata_dict[split_name] = transformation(adata)
+                return H5adDataset(new_adata_dict)
+            else:
+                # Single AnnData mode
+                new_adata = transformation(self._adata)
+                return H5adDataset(new_adata, self._split_col)
+        raise NotImplementedError(
+            "Element-wise apply is not yet supported for H5adDataset."
+        )
 
-    def filter(self, function: Callable, *, batched: bool = False, **kwargs: Any) -> "StimulusDataset":
+    def filter(
+        self, function: Callable, *, batched: bool = False, **kwargs: Any
+    ) -> "StimulusDataset":
         """Filter all splits in the dataset."""
         # We can implement filter by iterating or applying mask
-        raise NotImplementedError("filter operation is not yet supported for H5adDataset.")
+        raise NotImplementedError(
+            "filter operation is not yet supported for H5adDataset."
+        )
 
     def save(self, path: str) -> None:
         """Save the dataset to disk.
 
-        Enforces .h5ad extension for compatibility with CLI detection.
+        If the dataset has splits, saves each split as a separate .h5ad file
+        in subdirectories (e.g., path/train/data.h5ad, path/test/data.h5ad).
+        Otherwise, saves to a single .h5ad file.
         """
-        if not path.endswith(".h5ad"):
-            path += ".h5ad"
-        self._adata.write_h5ad(path)
+        import os
+
+        if self._adata_dict is not None:
+            # Dictionary mode: save each split to separate files
+            os.makedirs(path, exist_ok=True)
+
+            for split_name, split_adata in self._adata_dict.items():
+                split_dir = os.path.join(path, split_name)
+                os.makedirs(split_dir, exist_ok=True)
+
+                # Save to split subdirectory
+                split_path = os.path.join(split_dir, "data.h5ad")
+                split_adata.write_h5ad(split_path)
+
+        elif self._split_col and self._split_col in self._adata.obs:
+            # Single AnnData with split column: save each split to separate files
+            os.makedirs(path, exist_ok=True)
+
+            for split_name in self.split_names:
+                split_dir = os.path.join(path, split_name)
+                os.makedirs(split_dir, exist_ok=True)
+
+                # Get subset for this split
+                split_mask = self._adata.obs[self._split_col] == split_name
+                split_adata = self._adata[split_mask].copy()
+
+                # Remove the split column from the subset (no longer needed)
+                split_adata.obs = split_adata.obs.drop(
+                    columns=[self._split_col], errors="ignore"
+                )
+
+                # Save to split subdirectory
+                split_path = os.path.join(split_dir, "data.h5ad")
+                split_adata.write_h5ad(split_path)
+        else:
+            # Single file save (no splits)
+            if not path.endswith(".h5ad"):
+                path += ".h5ad"
+            self._adata.write_h5ad(path)
 
     @classmethod
     def load_from_disk(cls, path: str, **kwargs: Any) -> "H5adDataset":
-        """Load a dataset from disk."""
+        """Load a dataset from disk.
+
+        If path is a directory containing subdirectories (train, test, etc.),
+        loads each split from separate .h5ad files into a dictionary.
+        Otherwise, loads from a single .h5ad file.
+        """
+        import os
+
         import anndata
 
-        # Check for split column in kwargs or default
-        split_col = kwargs.pop("split_col", None)
-        adata = anndata.read_h5ad(path, **kwargs)
-        return cls(adata, split_col=split_col)
+        if os.path.isdir(path):
+            # Check if directory contains split subdirectories
+            found_splits = {}
+
+            try:
+                for entry in os.listdir(path):
+                    split_path = os.path.join(path, entry)
+                    if os.path.isdir(split_path):
+                        # Look for data.h5ad in the subdirectory
+                        h5ad_file = os.path.join(split_path, "data.h5ad")
+                        if os.path.exists(h5ad_file):
+                            found_splits[entry] = h5ad_file
+            except (OSError, PermissionError) as e:
+                raise ValueError(f"Error reading directory {path}: {e}") from e
+
+            if found_splits:
+                # Load splits into a dictionary (do NOT concatenate)
+                adata_dict = {}
+                for split_name, split_file in sorted(found_splits.items()):
+                    split_adata = anndata.read_h5ad(split_file, **kwargs)
+                    adata_dict[split_name] = split_adata
+
+                return cls(adata_dict)
+            else:
+                raise ValueError(
+                    f"Directory {path} does not contain split subdirectories with .h5ad files"
+                )
+        else:
+            # Single file load
+            split_col = kwargs.pop("split_col", None)
+            adata = anndata.read_h5ad(path, **kwargs)
+            return cls(adata, split_col=split_col)
 
     def select_split(self, split: str, indices: Any) -> Any:
         """Select a subset of a split."""
         # This is used for splitting logic.
         # We need to return a subset of the data.
-        subset = self._adata[self._adata.obs[self._split_col] == split] if self._split_col else self._adata
-
-        return subset[indices]
+        if self._adata_dict is not None:
+            # Dictionary mode
+            if split not in self._adata_dict:
+                raise ValueError(f"Split {split} not found in dataset")
+            return self._adata_dict[split][indices]
+        else:
+            # Single AnnData mode
+            subset = (
+                self._adata[self._adata.obs[self._split_col] == split]
+                if self._split_col
+                else self._adata
+            )
+            return subset[indices]
 
     def create_from_splits(self, splits: dict[str, Any]) -> "StimulusDataset":
-        """Create a new StimulusDataset from a dictionary of split objects."""
-        import anndata
+        """Create a new StimulusDataset from a dictionary of split objects.
 
-        # splits is a dict of {split_name: AnnData_subset}
-        # We need to concatenate them and create a new AnnData object
-        # and potentially add a split column.
+        Args:
+            splits: Dictionary mapping split names to AnnData objects.
 
-        target_split_col = self._split_col if self._split_col else "split"
-
-        adatas = []
+        Returns:
+            H5adDataset with splits stored as a dictionary (not concatenated).
+        """
+        # Instead of concatenating, store splits as a dictionary
+        adata_dict = {}
         for split_name, adata in splits.items():
-            # Add split column
-            # adata is a view or copy, so be careful
-            adata_copy = adata.copy()
-            adata_copy.obs[target_split_col] = split_name
-            adatas.append(adata_copy)
+            # Make a copy to avoid modifying the original
+            adata_dict[split_name] = adata.copy()
 
-        new_adata = anndata.concat(adatas, join="outer")
-        return H5adDataset(new_adata, split_col=target_split_col)
+        return H5adDataset(adata_dict)
