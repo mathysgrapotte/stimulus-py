@@ -48,7 +48,7 @@ def create_test_transform_config(temp_dir: str) -> str:
                     "transformations": [
                         {"name": "StandardScaler", "params": {"with_mean": True, "with_std": True}},
                     ],
-                }
+                },
             ],
         },
     }

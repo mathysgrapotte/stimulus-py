@@ -16,8 +16,6 @@ The idea is that everything is fully transparent to you, you know exactly what i
 
 It will require a bit of extra effort, but this is the price to pay to understand what is actually going on. Do not worry though, we provide helpful placeholders and examples to get you started.
 
-
-
 ## Configurable and reproducible
 
 In stimulus, we make extensive use of .yaml configs to define the training pipeline. This allows you to define the training pipeline in a human readable way, version control this file and share it. Since stimulus is built to be used in a containerized environment (best within it's parent nf-core pipeline, deepmodeloptim), it is then reproducible. 

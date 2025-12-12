@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """CLI module for model evaluation on datasets."""
 
 import csv
