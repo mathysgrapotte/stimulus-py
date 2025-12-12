@@ -22,6 +22,16 @@ nav:
 # defer to gen-files + literate-nav
 - API reference:
   - stimulus-py: reference/
+- Tutorials:
+  - Why Stimulus?: tutorials/why_stimulus.md
+  - Design Philosophy: tutorials/design_philosophy.md
+  - Overview: tutorials/overview.md
+  - Dataset: tutorials/dataset.md
+  - Dataset Config: tutorials/dataset_config.md
+  - Model: tutorials/model.md
+  - Model Config: tutorials/model_config.md
+  - CLI Tooling: tutorials/cli_tooling.md
+  - DeepModelOptim: tutorials/deep_model_optimization.md
 - Development:
   - Contributing: contributing.md
   - Code of Conduct: code_of_conduct.md
@@ -85,7 +95,11 @@ markdown_extensions:
 - pymdownx.snippets:
     base_path: [!relative $config_dir]
     check_paths: true
-- pymdownx.superfences
+- pymdownx.superfences:
+    custom_fences:
+      - name: mermaid
+        class: mermaid
+        format: !!python/name:pymdownx.superfences.fence_code_format
 - pymdownx.tabbed:
     alternate_style: true
     slugify: !!python/object/apply:pymdownx.slugs.slugify

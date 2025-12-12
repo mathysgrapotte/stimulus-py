@@ -12,7 +12,7 @@ import click
 from stimulus.cli.check_model import check_model as check_model_func
 from stimulus.cli.compare_tensors import compare_tensors_and_save
 from stimulus.cli.encode import encode as encode_func
-from stimulus.cli.predict import predict as predict_func
+from stimulus.cli.evaluate import evaluate as evaluate_func
 from stimulus.cli.split import split as split_func
 from stimulus.cli.split_yaml import split_yaml as split_yaml_func
 from stimulus.cli.transform import transform as transform_func
@@ -315,59 +315,76 @@ def tune(
     "--data",
     type=click.Path(exists=True),
     required=True,
-    help="Path to input data file",
+    help="Path to input data file (HuggingFace dataset with test split)",
 )
 @click.option(
     "-m",
     "--model",
     type=click.Path(exists=True),
     required=True,
-    help="Path to model file",
+    help="Path to model Python file",
 )
 @click.option(
     "-c",
     "--model-config",
     type=click.Path(exists=True),
     required=True,
-    help="Path to model config file",
+    help="Path to best_config.json from tune step",
 )
 @click.option(
     "-w",
     "--model-weight",
     type=click.Path(exists=True),
     required=True,
-    help="Path to model weight file in safetensors format",
+    help="Path to best_model.safetensors from tune step",
 )
 @click.option(
     "-b",
     "--batch-size",
     type=int,
     default=256,
-    help="Batch size for prediction [default: 256]",
+    help="Batch size for evaluation [default: 256]",
 )
 @click.option(
     "-o",
     "--output",
     type=click.Path(),
-    default="predictions.safetensors",
-    help="Path to save the predictions [default: predictions.safetensors]",
+    default="evaluation_metrics.csv",
+    help="Path to save the evaluation metrics CSV [default: evaluation_metrics.csv]",
 )
-def predict(
+@click.option(
+    "-t",
+    "--transform-config",
+    type=click.Path(exists=True),
+    default=None,
+    help="Path to transform config YAML file. All parameters will be included in CSV output.",
+)
+@click.option(
+    "-f",
+    "--force-device",
+    default=None,
+    help="Force the use of a specific device. Example: --force-device cuda:0",
+)
+def evaluate(
     data: str,
     model: str,
     model_config: str,
     model_weight: str,
     batch_size: int = 256,
-    output: str = "predictions.safetensors",
+    output: str = "evaluation_metrics.csv",
+    transform_config: Optional[str] = None,
+    force_device: Optional[str] = None,
 ) -> None:
-    """Use model to predict on data."""
-    predict_func(
+    """Evaluate model on test data and output metrics CSV."""
+    evaluate_func(
         data_path=data,
         model_path=model,
         model_config_path=model_config,
         weight_path=model_weight,
         output=output,
         batch_size=batch_size,
+        transform_config=transform_config,
+        force_device=force_device,
     )
 
 
